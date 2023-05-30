@@ -16,7 +16,9 @@ if __name__ == "__main__":
         cfg = get_config(new=False)
     else:
         cfg = get_config(new=True)
-    
+    for k, v in cfg.items():
+        print(f"{k}: {v}")
+        
     torch.manual_seed(cfg.seed)
     torch.cuda.manual_seed(cfg.seed)
     torch.backends.cudnn.deterministic = True
