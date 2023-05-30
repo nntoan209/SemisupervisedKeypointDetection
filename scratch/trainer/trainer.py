@@ -17,6 +17,7 @@ from codec.utils import flip_heatmaps, rotate_image
 class EMATrainer:
     def __init__(self, config):
         self.config = config
+        self.device = torch.device(self.config.device)
         
         # dataloader
         self.labeled_train_loader_1 = get_train_loader(batch_size=self.config.labeled_batch_size, type='labeled')
@@ -63,7 +64,7 @@ class EMATrainer:
                                                                   codec_type=self.config.codec_type,
                                                                   codec_cfg=self.config.codec_cfg,
                                                                   test_cfg=self.config.test_cfg))
-        self.network = DataParallel(self.network).cuda()
+        self.network = DataParallel(self.network).to(self.device)
         
         # optimizer
         self.base_lr = self.config.lr
@@ -88,8 +89,8 @@ class EMATrainer:
 
         for batch in pbar:
             
-            batch_image = batch['img'].cuda()
-            batch_heatmap = batch['heatmap'].cuda()
+            batch_image = batch['img'].to(self.device)
+            batch_heatmap = batch['heatmap'].to(self.device)
             
             with torch.no_grad():
                 t_heatmap_pred, s_heatmap_pred = self.network(batch_image)
@@ -157,13 +158,13 @@ class EMATrainer:
             num_labeled_item = self.config.labeled_batch_size
             num_unlabeled_item = self.config.unlabeled_batch_size
             
-            labeled_batch_image_1 = labeled_batch_1['img'].cuda()
-            labeled_batch_image_2 = labeled_batch_2['img'].cuda()
+            labeled_batch_image_1 = labeled_batch_1['img'].to(self.device)
+            labeled_batch_image_2 = labeled_batch_2['img'].to(self.device)
             
-            labeled_batch_heatmap_1 = labeled_batch_1['heatmap'].cuda()
+            labeled_batch_heatmap_1 = labeled_batch_1['heatmap'].to(self.device)
 
-            unlabeled_batch_image_1 = unlabeled_batch_1['img'].cuda()     
-            unlabeled_batch_image_2 = unlabeled_batch_2['img'].cuda()   
+            unlabeled_batch_image_1 = unlabeled_batch_1['img'].to(self.device)     
+            unlabeled_batch_image_2 = unlabeled_batch_2['img'].to(self.device)   
             
             # Unlabeled images
             # forward through 2 models
