@@ -63,7 +63,7 @@ class EMATrainer:
                                                                   codec_type=self.config.codec_type,
                                                                   codec_cfg=self.config.codec_cfg,
                                                                   test_cfg=self.config.test_cfg))
-        self.network = DataParallel(self.network).to(self.config.device)
+        self.network = DataParallel(self.network).cuda()
         
         # optimizer
         self.base_lr = self.config.lr
@@ -77,7 +77,9 @@ class EMATrainer:
 
     def _eval_epoch(self, epoch):
         self.network.eval()
-        pbar = tqdm(self.test_loader, total=len(self.test_loader), desc=f'Eval epoch {epoch}')
+        pbar = tqdm(self.test_loader, total=len(self.test_loader),
+                    desc=f'Eval epoch {epoch}',
+                    ncols=0)
         loss_meter_student = AverageMeter()
         loss_meter_teacher = AverageMeter()
 
@@ -86,12 +88,12 @@ class EMATrainer:
 
         for batch in pbar:
             
-            batch_image = batch['img'].to(self.config.device)
-            batch_heatmap = batch['heatmap'].to(self.config.device)
+            batch_image = batch['img'].cuda()
+            batch_heatmap = batch['heatmap'].cuda()
             
             with torch.no_grad():
                 t_heatmap_pred, s_heatmap_pred = self.network(batch_image)
-                t_keypoints_pred, t_keypoints_pred_score, s_keypoints_pred, s_keyoints_pred_score = self.network.module.predict(items=batch, device=self.config.device)
+                t_keypoints_pred, t_keypoints_pred_score, s_keypoints_pred, s_keyoints_pred_score = self.network.module.predict(items=batch, cuda=True)
 
                 # loss for model
                 loss_student = self.supervised_criterion(torch.sigmoid(s_heatmap_pred), batch_heatmap)
@@ -129,7 +131,8 @@ class EMATrainer:
     def _train_joint_epoch(self, epoch):
         self.network.train()
         pbar = tqdm(enumerate(range(self.len_loader)), total=self.len_loader,
-                    desc=f'Training joinly epoch {epoch + 1}/{self.config.joint_epoch}')
+                    desc=f'Training joinly epoch {epoch + 1}/{self.config.joint_epoch}',
+                    ncols=0)
         supervised_dataloader_1 = iter(self.labeled_train_loader_1)
         supervised_dataloader_2 = iter(self.labeled_train_loader_2)
         
@@ -154,13 +157,13 @@ class EMATrainer:
             num_labeled_item = self.config.labeled_batch_size
             num_unlabeled_item = self.config.unlabeled_batch_size
             
-            labeled_batch_image_1 = labeled_batch_1['img'].to(self.config.device)
-            labeled_batch_image_2 = labeled_batch_2['img'].to(self.config.device)
+            labeled_batch_image_1 = labeled_batch_1['img'].cuda()
+            labeled_batch_image_2 = labeled_batch_2['img'].cuda()
             
-            labeled_batch_heatmap_1 = labeled_batch_1['heatmap'].to(self.config.device)
+            labeled_batch_heatmap_1 = labeled_batch_1['heatmap'].cuda()
 
-            unlabeled_batch_image_1 = unlabeled_batch_1['img'].to(self.config.device)     
-            unlabeled_batch_image_2 = unlabeled_batch_2['img'].to(self.config.device)   
+            unlabeled_batch_image_1 = unlabeled_batch_1['img'].cuda()     
+            unlabeled_batch_image_2 = unlabeled_batch_2['img'].cuda()   
             
             # Unlabeled images
             # forward through 2 models
@@ -282,7 +285,7 @@ class EMATrainer:
 
     def load_checkpoint(self):
         checkpoint_path = os.path.join(self.config.snapshot_dir, 'checkpoint_last.pt')
-        checkpoint = torch.load(checkpoint_path, map_location=self.config.device)
+        checkpoint = torch.load(checkpoint_path)
         self.network.module.load_state_dict(checkpoint['state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         self.lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])

@@ -28,13 +28,13 @@ class MeanTeacherNetwork(nn.Module):
         
         return t_heatmap, s_heatmap
     
-    def predict(self, items, device='cuda'):
+    def predict(self, items, cuda=True):
         with torch.no_grad():
             # predicted keypoints of the teacher model
-            t_keypoints_pred, t_keypoints_pred_score = self.teacher_model.predict(items, device)
+            t_keypoints_pred, t_keypoints_pred_score = self.teacher_model.predict(items, cuda)
             
             # predicted keypoints of the student model
-            s_keypoints_pred, s_keyoints_pred_score = self.student_model.predict(items, device)
+            s_keypoints_pred, s_keyoints_pred_score = self.student_model.predict(items, cuda)
             
         return t_keypoints_pred, t_keypoints_pred_score, s_keypoints_pred, s_keyoints_pred_score
         
