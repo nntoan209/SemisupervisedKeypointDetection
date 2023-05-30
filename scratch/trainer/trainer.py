@@ -28,15 +28,15 @@ class EMATrainer:
         self.unlabeled_train_loader_2 = get_train_loader(batch_size=self.config.unlabeled_batch_size, type='unlabeled')
         
         self.len_loader = max(len(self.labeled_train_loader_1), len(self.unlabeled_train_loader_1))
-        self.test_loader = get_test_loader(batch_size=self.config.test_batch_size, )
+        self.test_loader = get_test_loader(batch_size=self.config.test_batch_size)
         
         # loss functions
         if self.config.supervised_loss == 'awing':
             self.supervised_criterion = AdaptiveWingLoss(alpha=self.config.alpha,
-                                              omega=self.config.omega,
-                                              epsilon=self.config.epsilon,
-                                              theta=self.config.theta,
-                                              use_target_weight=self.config.use_target_weight)
+                                                        omega=self.config.omega,
+                                                        epsilon=self.config.epsilon,
+                                                        theta=self.config.theta,
+                                                        use_target_weight=self.config.use_target_weight)
         elif self.config.supervised_loss == 'mse':
             self.supervised_criterion = KeypointMSELoss()
             
@@ -73,7 +73,7 @@ class EMATrainer:
                                lr=self.config.lr,
                                weight_decay=self.config.weight_decay)
         self.lr_scheduler = CosineAnnealingLR(optimizer=self.optimizer,
-                                              T_max=self.config.joint_epoch * self.len_loader,
+                                              T_max=self.config.joint_epoch,
                                               eta_min=1e-5)
         self.current_epoch = 0
 
@@ -95,7 +95,7 @@ class EMATrainer:
             
             with torch.no_grad():
                 t_heatmap_pred, s_heatmap_pred = self.network(batch_image)
-                t_keypoints_pred, t_keypoints_pred_score, s_keypoints_pred, s_keyoints_pred_score = self.network.module.predict(items=batch, cuda=True)
+                t_keypoints_pred, _, s_keypoints_pred, _ = self.network.module.predict(items=batch, cuda=True)
 
                 # loss for model
                 loss_student = self.supervised_criterion(torch.sigmoid(s_heatmap_pred), batch_heatmap)
@@ -116,10 +116,10 @@ class EMATrainer:
                                          weight=self.config.test_batch_size)
 
                 pbar.set_postfix({
-                    'loss': [round(loss_meter_student.average(), 5),
-                             round(loss_meter_teacher.average(), 5)],
-                    'nme': [round(nme_meter_student.average(), 5),
-                            round(nme_meter_teacher.average(), 5)],
+                    'supervised loss student/teacher': [round(loss_meter_student.average(), 5),
+                                                        round(loss_meter_teacher.average(), 5)],
+                    'nme student/teacher': [round(nme_meter_student.average(), 5),
+                                            round(nme_meter_teacher.average(), 5)],
                 })
                 
         result = {'test/supervised loss student': round(loss_meter_student.average(), 5),
@@ -132,9 +132,11 @@ class EMATrainer:
 
     def _train_joint_epoch(self, epoch):
         self.network.train()
+        
         pbar = tqdm(enumerate(range(self.len_loader)), total=self.len_loader,
                     desc=f'Training joinly epoch {epoch + 1}/{self.config.joint_epoch}',
                     ncols=0)
+        
         supervised_dataloader_1 = iter(self.labeled_train_loader_1)
         supervised_dataloader_2 = iter(self.labeled_train_loader_2)
         
@@ -174,7 +176,9 @@ class EMATrainer:
             
             # rotate and flip the heatmaps to recover the original heatmap
             recovered_unlabeled_batch_heatmap_pred_1 = unlabeled_batch_heatmap_pred_1.clone()
-            for i in range(num_unlabeled_item):
+            # iter through the batch size
+            for i in range(num_unlabeled_item): 
+                # get the predicted heatmap
                 heatmap = recovered_unlabeled_batch_heatmap_pred_1[i]
                 # rotate the heatmap
                 heatmap = rotate_image(image=heatmap,
@@ -182,12 +186,14 @@ class EMATrainer:
                 # flip the heatmap
                 if unlabeled_batch_1['flip'][i]:
                     heatmap = flip_heatmaps(heatmaps=torch.unsqueeze(heatmap, 0),
-                                            flip_indices=[1, 0, 2, 3, 4],
+                                            flip_indices=self.config.flip_indices,
                                             shift_heatmap=True).squeeze()
                 recovered_unlabeled_batch_heatmap_pred_1[i] = heatmap
                 
             recovered_unlabeled_batch_heatmap_pred_2 = unlabeled_batch_heatmap_pred_2.clone()
+            # iter through the batch size
             for i in range(num_unlabeled_item):
+                # get the predicted heatmap
                 heatmap = recovered_unlabeled_batch_heatmap_pred_2[i]
                 # rotate the heatmap
                 heatmap = rotate_image(image=heatmap,
@@ -195,14 +201,13 @@ class EMATrainer:
                 # flip the heatmap
                 if unlabeled_batch_2['flip'][i]:
                     heatmap = flip_heatmaps(heatmaps=torch.unsqueeze(heatmap, 0),
-                                            flip_indices=[1, 0, 2, 3, 4],
+                                            flip_indices=self.config.flip_indices,
                                             shift_heatmap=True).squeeze()
                 recovered_unlabeled_batch_heatmap_pred_2[i] = heatmap
                 
-            
-            unlaleled_consistency_loss = self.consistency_criterion(torch.sigmoid(recovered_unlabeled_batch_heatmap_pred_1),
+            unlabeled_consistency_loss = self.consistency_criterion(torch.sigmoid(recovered_unlabeled_batch_heatmap_pred_1),
                                                                     torch.sigmoid(recovered_unlabeled_batch_heatmap_pred_2))
-            unlabeled_consistency_loss_meter.update(val=unlaleled_consistency_loss.item(),
+            unlabeled_consistency_loss_meter.update(val=unlabeled_consistency_loss.item(),
                                                     weight=num_unlabeled_item)
             
             # Labeled images
@@ -212,6 +217,7 @@ class EMATrainer:
             
             # rotate and flip the heatmaps to recover the original heatmap
             recovered_labeled_batch_heatmap_pred_1 = labeled_batch_heatmap_pred_1.clone()
+            # iter through the batch size
             for i in range(num_labeled_item):
                 heatmap = recovered_labeled_batch_heatmap_pred_1[i]
                 # rotate the heatmap
@@ -220,11 +226,12 @@ class EMATrainer:
                 # flip the heatmap
                 if labeled_batch_1['flip'][i]:
                     heatmap = flip_heatmaps(heatmaps=torch.unsqueeze(heatmap, 0),
-                                            flip_indices=[1, 0, 2, 3, 4],
+                                            flip_indices=self.config.flip_indices,
                                             shift_heatmap=True).squeeze()
                 recovered_labeled_batch_heatmap_pred_1[i] = heatmap
                 
             recovered_labeled_batch_heatmap_pred_2 = labeled_batch_heatmap_pred_2.clone()
+            # iter through the batch size
             for i in range(num_labeled_item):
                 heatmap = recovered_labeled_batch_heatmap_pred_2[i]
                 # rotate the heatmap
@@ -233,7 +240,7 @@ class EMATrainer:
                 # flip the heatmap
                 if labeled_batch_2['flip'][i]:
                     heatmap = flip_heatmaps(heatmaps=torch.unsqueeze(heatmap, 0),
-                                            flip_indices=[1, 0, 2, 3, 4],
+                                            flip_indices=self.config.flip_indices,
                                             shift_heatmap=True).squeeze()
                 recovered_labeled_batch_heatmap_pred_2[i] = heatmap
             
@@ -243,14 +250,15 @@ class EMATrainer:
                                                   weight=num_labeled_item)
         
             supervised_loss = self.supervised_criterion(torch.sigmoid(labeled_batch_heatmap_pred_1),
-                                                        torch.sigmoid(labeled_batch_heatmap_1))
+                                                        labeled_batch_heatmap_1)
             supervised_loss_meter.update(val=supervised_loss.item(),
                                          weight=num_labeled_item)
             
-            consistency_loss = unlaleled_consistency_loss + labeled_consistency_loss
+            consistency_loss = unlabeled_consistency_loss + labeled_consistency_loss
                             
             loss_total = supervised_loss + consistency_loss * self.config.consistency_loss_weight
-                
+            
+            # back propagation
             loss_total.backward()
             clip_grad_norm_(self.network.module.student_model.parameters(), 5)
 
@@ -261,19 +269,21 @@ class EMATrainer:
                                             max_step=self.config.ema_linear_epoch * self.len_loader,
                                             step=epoch * self.len_loader + i)
             
-            self.network.module._update_teacher_ema(ema_decay)  # update weights for teachers
-            
-            self.lr_scheduler.step()
-            
-            lr = self.lr_scheduler.get_last_lr()[0]
-            for i in range(len(self.optimizer.param_groups)):
-                self.optimizer.param_groups[i]['lr'] = lr
+            # update weights for teachers
+            self.network.module._update_teacher_ema(ema_decay)  
 
             pbar.set_postfix({
                 'supervised loss': round(supervised_loss_meter.average(), 5),
                 'labeled consistency loss': round(labeled_consistency_loss_meter.average(), 5),
-                'unlabeled consistency loss': round(unlabeled_consistency_loss_meter.average(),5) 
+                'unlabeled consistency loss': round(unlabeled_consistency_loss_meter.average(),5),
+                'lr': self.lr_scheduler.get_last_lr()[0]
             })
+            
+        # update the learning rate
+        self.lr_scheduler.step()
+        lr = self.lr_scheduler.get_last_lr()[0]
+        for i in range(len(self.optimizer.param_groups)):
+            self.optimizer.param_groups[i]['lr'] = lr
 
     def save_checkpoint(self, epoch, dir='checkpoint_last.pt', type='latest'):
         checkpoint_path = os.path.join(self.config.snapshot_dir, dir)

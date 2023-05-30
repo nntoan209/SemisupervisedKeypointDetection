@@ -54,13 +54,11 @@ def get_config(new=True):
     C.neck_type = None
     C.neck_cfg= None
     
-    C.head_type = "ViPNASHead"
+    C.head_type = "HeatmapHead"
     C.head_cfg = {"in_channels":768,
-                "out_channels":5,
-                "deconv_out_channels":(256, 256),
-                "deconv_num_groups":(256, 256),
-                "deconv_kernel_sizes":(3, 3),
-                "conv_kernel_sizes":3}
+                  "out_channels":5,
+                  "deconv_out_channels":(256, 256),
+                  "deconv_kernel_sizes": (4, 4)}
     
     C.test_cfg = {'flip_test': True,
                   'shift_heatmap': True}
@@ -76,7 +74,6 @@ def get_config(new=True):
     C.dataset_keypoint_weights = [1., 1., 1., 1., 1.]
     
     C.consistency_loss = 'mse'
-    
     C.consistency_loss_weight = 1
     
     """ METRICS CONFIG """
