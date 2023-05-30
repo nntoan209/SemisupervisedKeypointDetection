@@ -17,6 +17,7 @@ from codec.utils import flip_heatmaps, rotate_image
 class EMATrainer:
     def __init__(self, config):
         self.config = config
+        
         self.device = torch.device(self.config.device)
         
         # dataloader

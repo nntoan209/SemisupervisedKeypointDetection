@@ -32,7 +32,7 @@ def get_config(new=True):
     C.flip_indices = [1, 0, 2, 3, 4]
     
     """ MODEL CONFIG """
-    C.device = "cuda"
+    C.device = "cuda:0"
     
     C.codec_type = "MSRAHeatmap"
     C.codec_cfg = {"input_size":C.input_size,
