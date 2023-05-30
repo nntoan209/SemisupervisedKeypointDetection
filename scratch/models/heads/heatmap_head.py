@@ -63,6 +63,8 @@ class HeatmapHead(nn.Module):
                                          kernel_size=1)
         else:
             self.final_layer = nn.Identity()
+            
+        self.sigmoid = nn.Sigmoid()
 
     def _make_conv_layers(self, in_channels: int,
                           layer_out_channels,
@@ -127,5 +129,6 @@ class HeatmapHead(nn.Module):
         x = self.deconv_layers(x)
         x = self.conv_layers(x)
         x = self.final_layer(x)
+        x = self.sigmoid(x)
 
         return x

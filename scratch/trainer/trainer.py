@@ -98,8 +98,8 @@ class EMATrainer:
                 t_keypoints_pred, _, s_keypoints_pred, _ = self.network.module.predict(items=batch, cuda=True)
 
                 # loss for model
-                loss_student = self.supervised_criterion(torch.sigmoid(s_heatmap_pred), batch_heatmap)
-                loss_teacher = self.supervised_criterion(torch.sigmoid(t_heatmap_pred), batch_heatmap)
+                loss_student = self.supervised_criterion(s_heatmap_pred, batch_heatmap)
+                loss_teacher = self.supervised_criterion(t_heatmap_pred, batch_heatmap)
                 
                 loss_meter_student.update(val=loss_student.item(),
                                           weight=self.config.test_batch_size)
@@ -134,7 +134,7 @@ class EMATrainer:
         self.network.train()
         
         pbar = tqdm(enumerate(range(self.len_loader)), total=self.len_loader,
-                    desc=f'Training joinly epoch {epoch + 1}/{self.config.joint_epoch}',
+                    desc=f'Training epoch {epoch + 1}/{self.config.joint_epoch}',
                     ncols=0)
         
         supervised_dataloader_1 = iter(self.labeled_train_loader_1)
@@ -205,8 +205,8 @@ class EMATrainer:
                                             shift_heatmap=True).squeeze()
                 recovered_unlabeled_batch_heatmap_pred_2[i] = heatmap
                 
-            unlabeled_consistency_loss = self.consistency_criterion(torch.sigmoid(recovered_unlabeled_batch_heatmap_pred_1),
-                                                                    torch.sigmoid(recovered_unlabeled_batch_heatmap_pred_2))
+            unlabeled_consistency_loss = self.consistency_criterion(recovered_unlabeled_batch_heatmap_pred_1,
+                                                                    recovered_unlabeled_batch_heatmap_pred_2)
             unlabeled_consistency_loss_meter.update(val=unlabeled_consistency_loss.item(),
                                                     weight=num_unlabeled_item)
             
@@ -244,12 +244,12 @@ class EMATrainer:
                                             shift_heatmap=True).squeeze()
                 recovered_labeled_batch_heatmap_pred_2[i] = heatmap
             
-            labeled_consistency_loss = self.consistency_criterion(torch.sigmoid(recovered_labeled_batch_heatmap_pred_1),
-                                                                  torch.sigmoid(recovered_labeled_batch_heatmap_pred_2))
+            labeled_consistency_loss = self.consistency_criterion(recovered_labeled_batch_heatmap_pred_1,
+                                                                  recovered_labeled_batch_heatmap_pred_2)
             labeled_consistency_loss_meter.update(val=labeled_consistency_loss.item(),
                                                   weight=num_labeled_item)
         
-            supervised_loss = self.supervised_criterion(torch.sigmoid(labeled_batch_heatmap_pred_1),
+            supervised_loss = self.supervised_criterion(labeled_batch_heatmap_pred_1,
                                                         labeled_batch_heatmap_1)
             supervised_loss_meter.update(val=supervised_loss.item(),
                                          weight=num_labeled_item)
@@ -269,13 +269,13 @@ class EMATrainer:
                                             max_step=self.config.ema_linear_epoch * self.len_loader,
                                             step=epoch * self.len_loader + i)
             
-            # update weights for teachers
+            # update weights for teacher
             self.network.module._update_teacher_ema(ema_decay)  
 
             pbar.set_postfix({
                 'supervised loss': round(supervised_loss_meter.average(), 5),
-                'labeled consistency loss': round(labeled_consistency_loss_meter.average(), 5),
-                'unlabeled consistency loss': round(unlabeled_consistency_loss_meter.average(),5),
+                'label consistency loss': round(labeled_consistency_loss_meter.average(), 5),
+                'unlabel consistency loss': round(unlabeled_consistency_loss_meter.average(),5),
                 'lr': self.lr_scheduler.get_last_lr()[0]
             })
             
