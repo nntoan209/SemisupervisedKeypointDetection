@@ -4,6 +4,7 @@ from dataloader.transforms import *
 from codec.msra_heatmap import MSRAHeatmap
 from configs.config import get_config
 config = get_config()
+
 CODECS = {"MSRAHeatmap": MSRAHeatmap}
 codec = CODECS[config.codec_type](**config.codec_cfg)
 
@@ -49,7 +50,7 @@ class AFLWDataClass(Dataset):
     def __len__(self):
         return len(self.images)
     
-def get_train_loader(type: str='labeled'):
+def get_train_loader(batch_size, type: str='labeled'):
     if type == 'labeled':        
         transforms = [LoadImage(),
                       BBoxTransform(),
@@ -70,7 +71,6 @@ def get_train_loader(type: str='labeled'):
                                 annotations_path=config.labeled_train_annotations_path,
                                 transforms=transforms,
                                 type='labeled')
-        batch_size = config.labeled_batch_size
     elif type == 'unlabeled':
         transforms = [LoadImage(),
                       BBoxTransform(),
@@ -90,7 +90,6 @@ def get_train_loader(type: str='labeled'):
                                 annotations_path=config.unlabeled_train_annotations_path,
                                 transforms=transforms,
                                 type='unlabeled')
-        batch_size = config.unlabeled_batch_size
         
     dataloader = InfiniteDataLoader(dataset,
                                     batch_size=batch_size,
@@ -101,7 +100,7 @@ def get_train_loader(type: str='labeled'):
                                     )
     return dataloader
 
-def get_test_loader():
+def get_test_loader(batch_size):
     transforms = [LoadImage(),
                   BBoxTransform(),
                   TopDownAffine(input_size=config.input_size,
@@ -117,7 +116,7 @@ def get_test_loader():
                             type='labeled')
     
     dataloader = DataLoader(dataset,
-                            batch_size=config.test_batch_size,
+                            batch_size=batch_size,
                             num_workers=config.num_workers,
                             drop_last=True,
                             shuffle=False,

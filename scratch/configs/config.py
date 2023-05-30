@@ -7,10 +7,10 @@ def get_config(new=True):
     config = C
 
     """ PATH CONFIG """
-    C.images_path = r'data\custom_aflw\images'
-    C.test_annotations_path = r'data\custom_aflw\annotations\face_landmarks_custom_aflw_test.json'
-    C.labeled_train_annotations_path = r'data\custom_aflw\annotations\face_landmarks_custom_aflw_labeled_train.json'
-    C.unlabeled_train_annotations_path = r'data\custom_aflw\annotations\face_landmarks_custom_aflw_unlabeled_train.json'
+    C.images_path = r'data/custom_aflw/images'
+    C.test_annotations_path = r'data/custom_aflw/annotations/face_landmarks_custom_aflw_test.json'
+    C.labeled_train_annotations_path = r'data/custom_aflw/annotations/face_landmarks_custom_aflw_labeled_train.json'
+    C.unlabeled_train_annotations_path = r'data/custom_aflw/annotations/face_landmarks_custom_aflw_unlabeled_train.json'
     
     C.backbone_pretrained = "vitpose-b-multi-coco.pth"
     
@@ -20,9 +20,9 @@ def get_config(new=True):
     C.input_size = [256, 192]
     C.heatmap_size = (64, 48)
     
-    C.labeled_batch_size = 4
-    C.unlabeled_batch_size = 4
-    C.test_batch_size = 4
+    C.labeled_batch_size = 2
+    C.unlabeled_batch_size = 2
+    C.test_batch_size = 2
     C.num_workers = 2
     
     C.flip_prob = 0.5

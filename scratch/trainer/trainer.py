@@ -19,14 +19,14 @@ class EMATrainer:
         self.config = config
         
         # dataloader
-        self.labeled_train_loader_1 = get_train_loader(type='labeled')
-        self.labeled_train_loader_2 = get_train_loader(type='labeled')
+        self.labeled_train_loader_1 = get_train_loader(batch_size=self.config.labeled_batch_size, type='labeled')
+        self.labeled_train_loader_2 = get_train_loader(batch_size=self.config.labeled_batch_size, type='labeled')
         
-        self.unlabeled_train_loader_1 = get_train_loader(type='unlabeled')
-        self.unlabeled_train_loader_2 = get_train_loader(type='unlabeled')
+        self.unlabeled_train_loader_1 = get_train_loader(batch_size=self.config.unlabeled_batch_size, type='unlabeled')
+        self.unlabeled_train_loader_2 = get_train_loader(batch_size=self.config.unlabeled_batch_size, type='unlabeled')
         
         self.len_loader = max(len(self.labeled_train_loader_1), len(self.unlabeled_train_loader_1))
-        self.test_loader = get_test_loader()
+        self.test_loader = get_test_loader(batch_size=self.config.test_batch_size, )
         
         # loss functions
         if self.config.supervised_loss == 'awing':
@@ -301,7 +301,7 @@ class EMATrainer:
                 for i in range(len(self.optimizer.param_groups)):
                     self.optimizer.param_groups[i]['lr'] = lr
                     
-            # self._train_joint_epoch(epoch)
+            self._train_joint_epoch(epoch)
                 
             result = self._eval_epoch(epoch)
             nme_teacher = result['test/nme teacher']
