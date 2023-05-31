@@ -80,7 +80,7 @@ class EMATrainer:
     def _eval_epoch(self, epoch):
         self.network.eval()
         pbar = tqdm(self.test_loader, total=len(self.test_loader),
-                    desc=f'Eval epoch {epoch}',
+                    desc=f'Eval epoch {epoch+1}',
                     ncols=0)
         loss_meter_student = AverageMeter()
         loss_meter_teacher = AverageMeter()

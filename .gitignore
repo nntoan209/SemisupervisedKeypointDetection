@@ -36,6 +36,10 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
+# Jupyer notebooks
+*.ipynb
+.ipynb_checkpoints/
+
 # Unit test / coverage reports
 htmlcov/
 .tox/
@@ -151,6 +155,9 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Log files
+ema_log/
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
