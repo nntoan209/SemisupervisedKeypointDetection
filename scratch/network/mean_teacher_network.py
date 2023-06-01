@@ -34,11 +34,10 @@ class MeanTeacherNetwork(nn.Module):
             t_keypoints_pred, t_keypoints_pred_score = self.teacher_model.predict(items, cuda)
             
             # predicted keypoints of the student model
-            s_keypoints_pred, s_keyoints_pred_score = self.student_model.predict(items, cuda)
+            s_keypoints_pred, s_keypoints_pred_score = self.student_model.predict(items, cuda)
             
-        return t_keypoints_pred, t_keypoints_pred_score, s_keypoints_pred, s_keyoints_pred_score
-        
-    
+        return t_keypoints_pred, t_keypoints_pred_score, s_keypoints_pred, s_keypoints_pred_score
+
     def _update_teacher_ema(self, ema_decay):
         for t_param, s_param in zip(self.teacher_model.parameters(), self.student_model.parameters()):
             t_param.data.mul_(ema_decay).add_(other=s_param.data, alpha=1 - ema_decay)

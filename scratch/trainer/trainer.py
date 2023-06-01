@@ -93,6 +93,8 @@ class EMATrainer:
             batch_image = batch['img'].to(self.device)
             batch_heatmap = batch['heatmap'].to(self.device)
             
+            num_item = batch_image.shape[0]
+            
             with torch.no_grad():
                 t_heatmap_pred, s_heatmap_pred = self.network(batch_image)
                 t_keypoints_pred, _, s_keypoints_pred, _ = self.network.module.predict(items=batch, cuda=True)
@@ -102,18 +104,18 @@ class EMATrainer:
                 loss_teacher = self.supervised_criterion(t_heatmap_pred, batch_heatmap)
                 
                 loss_meter_student.update(val=loss_student.item(),
-                                          weight=self.config.test_batch_size)
+                                          weight=num_item)
                 loss_meter_teacher.update(val=loss_teacher.item(),
-                                          weight=self.config.test_batch_size)
+                                          weight=num_item)
                 
                 # nme for model
                 nme_student = self.evaluator(s_keypoints_pred, batch)
                 nme_teacher = self.evaluator(t_keypoints_pred, batch)
                 
                 nme_meter_student.update(val=nme_student.item(),
-                                         weight=self.config.test_batch_size)
+                                         weight=num_item)
                 nme_meter_teacher.update(val=nme_teacher.item(),
-                                         weight=self.config.test_batch_size)
+                                         weight=num_item)
 
                 pbar.set_postfix({
                     'supervised loss student/teacher': [round(loss_meter_student.average(), 5),

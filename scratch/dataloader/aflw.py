@@ -118,8 +118,8 @@ def get_test_loader(batch_size):
     dataloader = DataLoader(dataset,
                             batch_size=batch_size,
                             num_workers=config.num_workers,
-                            drop_last=True,
-                            shuffle=False,
+                            drop_last=False,
+                            shuffle=True,
                             pin_memory=True
                             )
     return dataloader
