@@ -119,7 +119,7 @@ def get_test_loader(batch_size):
                             batch_size=batch_size,
                             num_workers=config.num_workers,
                             drop_last=False,
-                            shuffle=True,
+                            shuffle=False,
                             pin_memory=True
                             )
     return dataloader

@@ -3,13 +3,13 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 from torch.nn import DataParallel
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm import tqdm
 
 from dataloader.aflw import get_test_loader, get_train_loader
 from losses.loss import AdaptiveWingLoss, KeypointMSELoss
 from network.mean_teacher_network import MeanTeacherNetwork
 from models.model import PoseModel
+from utils import LinearWarmupCosineAnnealingLR
 from metrics.nme import NME
 from utils import AverageMeter, ema_decay_scheduler
 from codec.utils import flip_heatmaps, rotate_image
@@ -68,13 +68,14 @@ class EMATrainer:
         self.network = DataParallel(self.network).to(self.device)
         
         # optimizer
-        self.base_lr = self.config.lr
         self.optimizer = AdamW(params=self.network.module.student_model.parameters(),
                                lr=self.config.lr,
                                weight_decay=self.config.weight_decay)
-        self.lr_scheduler = CosineAnnealingLR(optimizer=self.optimizer,
-                                              T_max=self.config.joint_epoch,
-                                              eta_min=1e-5)
+        self.lr_scheduler = LinearWarmupCosineAnnealingLR(optimizer=self.optimizer,
+                                                          warmup_epochs=self.config.warmup_epoch * self.len_loader,
+                                                          max_epochs=self.config.joint_epoch * self.len_loader,
+                                                          warmup_start_lr=1e-5,
+                                                          eta_min=1e-5)
         self.current_epoch = 0
 
     def _eval_epoch(self, epoch):
@@ -273,6 +274,12 @@ class EMATrainer:
             
             # update weights for teacher
             self.network.module._update_teacher_ema(ema_decay)  
+            
+            # update the learning rate
+            self.lr_scheduler.step()
+            lr = self.lr_scheduler.get_last_lr()[0]
+            for i in range(len(self.optimizer.param_groups)):
+                self.optimizer.param_groups[i]['lr'] = lr
 
             pbar.set_postfix({
                 'supervised loss': round(supervised_loss_meter.average(), 5),
@@ -280,12 +287,6 @@ class EMATrainer:
                 'unlabel consistency loss': round(unlabeled_consistency_loss_meter.average(),5),
                 'lr': self.lr_scheduler.get_last_lr()[0]
             })
-            
-        # update the learning rate
-        self.lr_scheduler.step()
-        lr = self.lr_scheduler.get_last_lr()[0]
-        for i in range(len(self.optimizer.param_groups)):
-            self.optimizer.param_groups[i]['lr'] = lr
 
     def save_checkpoint(self, epoch, dir='checkpoint_last.pt', type='latest'):
         checkpoint_path = os.path.join(self.config.snapshot_dir, dir)
@@ -295,10 +296,18 @@ class EMATrainer:
                       'epoch': self.current_epoch,
                       }
         torch.save(checkpoint, checkpoint_path)
-        print(f"-----> save {type} checkpoint at epoch {epoch}")
+        print(f"-----> save {type} checkpoint at epoch {epoch+1}")
 
     def load_checkpoint(self):
         checkpoint_path = os.path.join(self.config.snapshot_dir, 'checkpoint_last.pt')
+        checkpoint = torch.load(checkpoint_path)
+        self.network.module.load_state_dict(checkpoint['state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer'])
+        self.lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
+        self.current_epoch = checkpoint['epoch']
+        print("----> load checkpoint")
+        
+    def load_checkpoint_from_pt(self, checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
         self.network.module.load_state_dict(checkpoint['state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
@@ -312,12 +321,7 @@ class EMATrainer:
             
         best_nme_teacher = 1e9
             
-        for epoch in range(self.current_epoch, self.config.labeled_epoch + self.config.joint_epoch):
-            if epoch == self.config.labeled_epoch:
-                lr = self.config.lr  # restart learning rate
-                for i in range(len(self.optimizer.param_groups)):
-                    self.optimizer.param_groups[i]['lr'] = lr
-                    
+        for epoch in range(self.current_epoch, self.config.labeled_epoch + self.config.joint_epoch):  
             self._train_joint_epoch(epoch)
                 
             result = self._eval_epoch(epoch)

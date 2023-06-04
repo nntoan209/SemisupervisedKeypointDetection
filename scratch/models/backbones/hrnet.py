@@ -251,6 +251,7 @@ class HRNet(nn.Module):
 
     def __init__(self,
                  extra,
+                 pretrained=None,
                  in_channels=3,
                  frozen_stages=-1):
         
@@ -328,6 +329,7 @@ class HRNet(nn.Module):
             num_channels,
             multi_scale_output=self.stage4_cfg.get('multiscale_output', False))
 
+        self.init_weights(pretrained=pretrained)
         self._freeze_stages()
 
     def _make_transition_layer(self,
@@ -503,7 +505,7 @@ class HRNet(nn.Module):
 
         if os.path.isfile(pretrained):
             pretrained_state_dict = torch.load(pretrained)
-            print('=> loading pretrained model {}'.format(pretrained))
+            print('=> loading pretrained backbone from {}'.format(pretrained))
 
             need_init_state_dict = {}
             for _name, m in pretrained_state_dict['state_dict'].items():

@@ -158,6 +158,8 @@ cython_debug/
 
 # Log files
 ema_log/
+*.pt
+*.pth
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

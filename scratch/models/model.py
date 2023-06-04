@@ -58,18 +58,20 @@ class PoseModel(nn.Module):
         Predict the keypoints by combining the 2 versions of heatmap: the curernt version
         and the flipped version to improve the accuracy
         """
-        if self.test_cfg.get('flip_test', False):
-            _feats = self._extract_features(items['img'].to(torch.device("cuda:0")) if cuda else items['img'])
-            _feats_flip = self._extract_features(items['img'].flip(-1).to(torch.device("cuda:0")) if cuda else items['img'].flip(-1))
-            _batch_heatmaps = self.head(_feats)
-            _batch_heatmaps_flip = flip_heatmaps(self.head(_feats_flip),
-                                                flip_indices=[1, 0, 2, 3, 4],
-                                                shift_heatmap=self.test_cfg.get('shift_heatmap', False))
-            batch_heatmaps = (_batch_heatmaps + _batch_heatmaps_flip) * 0.5
-        else:
-            _feats = self._extract_features(items['img'].to(torch.device("cuda:0")) if cuda else items['img'])
-            batch_heatmaps = self.forward(_feats)
-        
+        self.eval()
+        with torch.no_grad():
+            if self.test_cfg.get('flip_test', False):
+                _feats = self._extract_features(items['img'].to(torch.device("cuda:0")) if cuda else items['img'])
+                _feats_flip = self._extract_features(items['img'].flip(-1).to(torch.device("cuda:0")) if cuda else items['img'].flip(-1))
+                _batch_heatmaps = self.head(_feats)
+                _batch_heatmaps_flip = flip_heatmaps(self.head(_feats_flip),
+                                                    flip_indices=[1, 0, 2, 3, 4],
+                                                    shift_heatmap=self.test_cfg.get('shift_heatmap', False))
+                batch_heatmaps = (_batch_heatmaps + _batch_heatmaps_flip) * 0.5
+            else:
+                _feats = self._extract_features(items['img'].to(torch.device("cuda:0")) if cuda else items['img'])
+                batch_heatmaps = self.head(_feats)
+
         batch_keypoints = []
         batch_scores = []
         input_size = (items['input_size'][0][0].item(), items['input_size'][1][0].item())
