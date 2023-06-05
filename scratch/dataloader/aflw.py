@@ -38,6 +38,7 @@ class AFLWDataClass(Dataset):
             _keypoints = np.array(annotation['keypoints'], dtype=np.float32).reshape(1, -1, 3)
             item['keypoints'] = _keypoints[..., :2]
             item['keypoints_visible'] = np.minimum(1, _keypoints[..., 2])
+            item['keypoints_weight'] = np.array(config.dataset_keypoint_weights)
             
         item['bbox'] = annotation['bbox']
         

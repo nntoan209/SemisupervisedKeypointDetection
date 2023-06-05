@@ -93,6 +93,7 @@ class EMATrainer:
             
             batch_image = batch['img'].to(self.device)
             batch_heatmap = batch['heatmap'].to(self.device)
+            batch_target_weights = batch['keypoints_weight'].to(self.device)
             
             num_item = batch_image.shape[0]
             
@@ -101,8 +102,10 @@ class EMATrainer:
                 t_keypoints_pred, _, s_keypoints_pred, _ = self.network.module.predict(items=batch, cuda=True)
 
                 # loss for model
-                loss_student = self.supervised_criterion(s_heatmap_pred, batch_heatmap)
-                loss_teacher = self.supervised_criterion(t_heatmap_pred, batch_heatmap)
+                loss_student = self.supervised_criterion(s_heatmap_pred, batch_heatmap,
+                                                         batch_target_weights)
+                loss_teacher = self.supervised_criterion(t_heatmap_pred, batch_heatmap,
+                                                         batch_target_weights)
                 
                 loss_meter_student.update(val=loss_student.item(),
                                           weight=num_item)
@@ -253,7 +256,8 @@ class EMATrainer:
                                                   weight=num_labeled_item)
         
             supervised_loss = self.supervised_criterion(labeled_batch_heatmap_pred_1,
-                                                        labeled_batch_heatmap_1)
+                                                        labeled_batch_heatmap_1,
+                                                        labeled_batch_1['keypoints_weight'].to(self.device))
             supervised_loss_meter.update(val=supervised_loss.item(),
                                          weight=num_labeled_item)
             
