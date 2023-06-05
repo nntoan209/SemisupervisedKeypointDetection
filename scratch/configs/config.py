@@ -116,7 +116,8 @@ def get_config(new=True):
     C.dataset_keypoint_weights = [1., 1., 1., 1.25, 1.25]
     
     C.consistency_loss = 'mse'
-    C.consistency_loss_weight = 1
+    C.final_consistency_loss_weight = 3
+    C.consistency_loss_weight_ramp_up_epoch = 5
     
     """ METRICS CONFIG """
     C.normalize_item = 'bbox_size'
@@ -125,9 +126,9 @@ def get_config(new=True):
     C.lr = 2e-3
     C.weight_decay = 1e-4
     
-    C.start_ema_decay = 0.5
-    C.end_ema_decay = 0.99
-    C.ema_linear_epoch = 15
+    C.start_ema_decay = 0.99
+    C.end_ema_decay = 0.999
+    C.ema_ramp_up_epoch = 5
     
     """ TRAIN CONFIG """
     C.joint_epoch = 50

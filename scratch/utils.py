@@ -47,6 +47,14 @@ def ema_decay_scheduler(start_ema_decay, end_ema_decay, max_step, step):
     else:
         return start_ema_decay + (end_ema_decay - start_ema_decay) / max_step * step
     
+def consistency_loss_weight_scheduler(final_value, max_step, step):
+    if step <= 10:
+        return 0
+    elif step > max_step:
+        return final_value
+    else:
+        return final_value * math.exp(-5. * (1 - step / max_step)**2)
+
     
 class LinearWarmupCosineAnnealingLR(torch.optim.lr_scheduler._LRScheduler):
     def __init__(

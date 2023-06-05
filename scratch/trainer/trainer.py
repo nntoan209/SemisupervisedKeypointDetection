@@ -11,7 +11,7 @@ from network.mean_teacher_network import MeanTeacherNetwork
 from models.model import PoseModel
 from utils import LinearWarmupCosineAnnealingLR
 from metrics.nme import NME
-from utils import AverageMeter, ema_decay_scheduler
+from utils import AverageMeter, ema_decay_scheduler, consistency_loss_weight_scheduler
 from codec.utils import flip_heatmaps, rotate_image
 
 class EMATrainer:
@@ -262,8 +262,11 @@ class EMATrainer:
                                          weight=num_labeled_item)
             
             consistency_loss = unlabeled_consistency_loss + labeled_consistency_loss
-                            
-            loss_total = supervised_loss + consistency_loss * self.config.consistency_loss_weight
+            
+            consistency_loss_weight = consistency_loss_weight_scheduler(final_value=self.config.final_consistency_loss_weight,
+                                                                        max_step=self.config.consistency_loss_weight_ramp_up_epoch * self.len_loader,
+                                                                        step=epoch * self.len_loader + i)
+            loss_total = supervised_loss + consistency_loss * consistency_loss_weight
             
             # back propagation
             loss_total.backward()
@@ -273,7 +276,7 @@ class EMATrainer:
             
             ema_decay = ema_decay_scheduler(self.config.start_ema_decay,
                                             self.config.end_ema_decay,
-                                            max_step=self.config.ema_linear_epoch * self.len_loader,
+                                            max_step=self.config.ema_ramp_up_epoch * self.len_loader,
                                             step=epoch * self.len_loader + i)
             
             # update weights for teacher
