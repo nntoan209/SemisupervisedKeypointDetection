@@ -126,7 +126,7 @@ def get_config(new=True):
     C.lr = 2e-3
     C.weight_decay = 1e-4
     
-    C.start_ema_decay = 0.99
+    C.start_ema_decay = 0.98
     C.end_ema_decay = 0.999
     C.ema_ramp_up_epoch = 5
     
