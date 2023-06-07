@@ -77,7 +77,7 @@ class FullySupervisedTrainer:
             
             with torch.no_grad():
                 heatmap_pred = self.model(batch_image)
-                keypoints_pred, keypoints_score= self.model.predict(items=batch, cuda=True)
+                keypoints_pred, keypoints_score= self.model.module.predict(items=batch, cuda=True)
 
                 # loss for model
                 loss = self.supervised_criterion(heatmap_pred, batch_heatmap,
