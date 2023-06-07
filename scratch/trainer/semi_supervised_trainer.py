@@ -184,33 +184,33 @@ class EMATrainer:
             # rotate and flip the heatmaps to recover the original heatmap
             recovered_unlabeled_batch_heatmap_pred_1 = unlabeled_batch_heatmap_pred_1.clone()
             # iter through the batch size
-            for i in range(num_unlabeled_item): 
+            for idx in range(num_unlabeled_item): 
                 # get the predicted heatmap
-                heatmap = recovered_unlabeled_batch_heatmap_pred_1[i]
+                heatmap = recovered_unlabeled_batch_heatmap_pred_1[idx]
                 # rotate the heatmap
                 heatmap = rotate_image(image=heatmap,
-                                       angle=-unlabeled_batch_1['rotation'][i].item())
+                                       angle=-unlabeled_batch_1['rotation'][idx].item())
                 # flip the heatmap
-                if unlabeled_batch_1['flip'][i]:
+                if unlabeled_batch_1['flip'][idx]:
                     heatmap = flip_heatmaps(heatmaps=torch.unsqueeze(heatmap, 0),
                                             flip_indices=self.config.flip_indices,
                                             shift_heatmap=True).squeeze()
-                recovered_unlabeled_batch_heatmap_pred_1[i] = heatmap
+                recovered_unlabeled_batch_heatmap_pred_1[idx] = heatmap
                 
             recovered_unlabeled_batch_heatmap_pred_2 = unlabeled_batch_heatmap_pred_2.clone()
             # iter through the batch size
-            for i in range(num_unlabeled_item):
+            for idx in range(num_unlabeled_item):
                 # get the predicted heatmap
-                heatmap = recovered_unlabeled_batch_heatmap_pred_2[i]
+                heatmap = recovered_unlabeled_batch_heatmap_pred_2[idx]
                 # rotate the heatmap
                 heatmap = rotate_image(image=heatmap,
-                                       angle=-unlabeled_batch_2['rotation'][i].item())
+                                       angle=-unlabeled_batch_2['rotation'][idx].item())
                 # flip the heatmap
-                if unlabeled_batch_2['flip'][i]:
+                if unlabeled_batch_2['flip'][idx]:
                     heatmap = flip_heatmaps(heatmaps=torch.unsqueeze(heatmap, 0),
                                             flip_indices=self.config.flip_indices,
                                             shift_heatmap=True).squeeze()
-                recovered_unlabeled_batch_heatmap_pred_2[i] = heatmap
+                recovered_unlabeled_batch_heatmap_pred_2[idx] = heatmap
                 
             unlabeled_consistency_loss = self.consistency_criterion(recovered_unlabeled_batch_heatmap_pred_1,
                                                                     recovered_unlabeled_batch_heatmap_pred_2)
@@ -225,31 +225,31 @@ class EMATrainer:
             # rotate and flip the heatmaps to recover the original heatmap
             recovered_labeled_batch_heatmap_pred_1 = labeled_batch_heatmap_pred_1.clone()
             # iter through the batch size
-            for i in range(num_labeled_item):
-                heatmap = recovered_labeled_batch_heatmap_pred_1[i]
+            for idx in range(num_labeled_item):
+                heatmap = recovered_labeled_batch_heatmap_pred_1[idx]
                 # rotate the heatmap
                 heatmap = rotate_image(image=heatmap,
-                                       angle=-labeled_batch_1['rotation'][i].item())
+                                       angle=-labeled_batch_1['rotation'][idx].item())
                 # flip the heatmap
-                if labeled_batch_1['flip'][i]:
+                if labeled_batch_1['flip'][idx]:
                     heatmap = flip_heatmaps(heatmaps=torch.unsqueeze(heatmap, 0),
                                             flip_indices=self.config.flip_indices,
                                             shift_heatmap=True).squeeze()
-                recovered_labeled_batch_heatmap_pred_1[i] = heatmap
+                recovered_labeled_batch_heatmap_pred_1[idx] = heatmap
                 
             recovered_labeled_batch_heatmap_pred_2 = labeled_batch_heatmap_pred_2.clone()
             # iter through the batch size
-            for i in range(num_labeled_item):
-                heatmap = recovered_labeled_batch_heatmap_pred_2[i]
+            for idx in range(num_labeled_item):
+                heatmap = recovered_labeled_batch_heatmap_pred_2[idx]
                 # rotate the heatmap
                 heatmap = rotate_image(image=heatmap,
-                                       angle=-labeled_batch_2['rotation'][i].item())
+                                       angle=-labeled_batch_2['rotation'][idx].item())
                 # flip the heatmap
-                if labeled_batch_2['flip'][i]:
+                if labeled_batch_2['flip'][idx]:
                     heatmap = flip_heatmaps(heatmaps=torch.unsqueeze(heatmap, 0),
                                             flip_indices=self.config.flip_indices,
                                             shift_heatmap=True).squeeze()
-                recovered_labeled_batch_heatmap_pred_2[i] = heatmap
+                recovered_labeled_batch_heatmap_pred_2[idx] = heatmap
             
             labeled_consistency_loss = self.consistency_criterion(recovered_labeled_batch_heatmap_pred_1,
                                                                   recovered_labeled_batch_heatmap_pred_2)

@@ -6,7 +6,7 @@ sys.dont_write_bytecode = True
 from trainer.semi_supervised_trainer import EMATrainer
 from trainer.fully_supervised_trainer import FullySupervisedTrainer
 from argparse import ArgumentParser
-from configs.config import get_config
+from configs.config import get_config, log_config
 import traceback
 import torch
 import numpy as np
@@ -17,7 +17,7 @@ parser.add_argument("--resume", action='store_true', default=False, help='resume
 parser.add_argument("--epoch", type=int, default=50, help='total number of epochs')
 parser.add_argument("--rampup", type=int, default=10, help='number of ramp up epoch for learning rate, [consistency loss weight, ema decay rate]')
 parser.add_argument("--batchsize", type=int, default=8, help='batch size')
-parser.add_argument("--startemadecay", default=0.99, help='initial ema decay')
+parser.add_argument("--startemadecay", type=float, default=0.99, help='initial ema decay')
 args = parser.parse_args()
 
 if __name__ == "__main__":
@@ -37,6 +37,8 @@ if __name__ == "__main__":
     cfg.test_batch_size = args.batchsize
     
     cfg.start_ema_decay = args.startemadecay
+    
+    log_config(cfg)
         
     for k, v in cfg.items():
         print(f"{k}: {v}")

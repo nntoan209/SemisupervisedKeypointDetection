@@ -2,6 +2,12 @@ from easydict import EasyDict as edict
 import os
 import json
 
+def log_config(cfg):
+    if not os.path.isdir(cfg.snapshot_dir):
+        os.makedirs(cfg.snapshot_dir)
+    with open(os.path.join(cfg.snapshot_dir, 'config.json'), 'w') as f:
+        json.dump(cfg, f, indent=4)
+
 def get_config(new=True):
     C = edict()
     config = C
@@ -137,10 +143,7 @@ def get_config(new=True):
     C.warmup_epoch = 5
     C.seed = 420
     
-    if new:
-        if not os.path.isdir(C.snapshot_dir):
-            os.makedirs(C.snapshot_dir)
-        with open(os.path.join(C.snapshot_dir, 'config.json'), 'w') as f:
-            json.dump(config, f, indent=4)
+    # if new:
+    #     log_config(C)
     
     return config
