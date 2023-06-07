@@ -51,7 +51,7 @@ class AFLWDataClass(Dataset):
     def __len__(self):
         return len(self.images)
     
-def get_train_loader(batch_size, type: str='labeled'):
+def get_train_loader(batch_size, type: str='labeled', drop_last=True):
     if type == 'labeled':        
         transforms = [LoadImage(),
                       BBoxTransform(),
@@ -95,7 +95,7 @@ def get_train_loader(batch_size, type: str='labeled'):
     dataloader = InfiniteDataLoader(dataset,
                                     batch_size=batch_size,
                                     num_workers=config.num_workers,
-                                    drop_last=True,
+                                    drop_last=drop_last,
                                     shuffle=False,
                                     pin_memory=True
                                     )

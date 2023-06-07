@@ -476,21 +476,22 @@ class HRNet(nn.Module):
                     param.requires_grad = False
 
     def init_weights(self, pretrained=None, verbose=False):
-        print('=> init weights from normal distribution')
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.normal_(m.weight, std=0.001)
-                for name, _ in m.named_parameters():
-                    if name in ['bias']:
-                        nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.ConvTranspose2d):
-                nn.init.normal_(m.weight, std=0.001)
-                for name, _ in m.named_parameters():
-                    if name in ['bias']:
-                        nn.init.constant_(m.bias, 0)
+        if pretrained is None:
+            print('-----> init weights from normal distribution')
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    nn.init.normal_(m.weight, std=0.001)
+                    for name, _ in m.named_parameters():
+                        if name in ['bias']:
+                            nn.init.constant_(m.bias, 0)
+                elif isinstance(m, nn.BatchNorm2d):
+                    nn.init.constant_(m.weight, 1)
+                    nn.init.constant_(m.bias, 0)
+                elif isinstance(m, nn.ConvTranspose2d):
+                    nn.init.normal_(m.weight, std=0.001)
+                    for name, _ in m.named_parameters():
+                        if name in ['bias']:
+                            nn.init.constant_(m.bias, 0)
 
         parameters_names = set()
         for name, _ in self.named_parameters():

@@ -156,10 +156,11 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Log files
+# Custom files
 ema_log/
 *.pt
 *.pth
+aflw_code/
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

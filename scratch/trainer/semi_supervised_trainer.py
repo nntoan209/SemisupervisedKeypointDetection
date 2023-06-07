@@ -137,6 +137,7 @@ class EMATrainer:
         return result
 
     def _train_joint_epoch(self, epoch):
+        print()
         self.network.train()
         
         pbar = tqdm(enumerate(range(self.len_loader)), total=self.len_loader,

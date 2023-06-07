@@ -1,16 +1,13 @@
 import math
 import os
 import warnings
-
-from itertools import repeat
-import collections.abc
-
 import torch
 from functools import partial
+from itertools import repeat
+import collections.abc
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
-from torch import Tensor
 
 def drop_path(x, drop_prob: float = 0., training: bool = False, scale_by_keep: bool = True):
     if drop_prob == 0. or not training:
@@ -25,17 +22,15 @@ def drop_path(x, drop_prob: float = 0., training: bool = False, scale_by_keep: b
 def _ntuple(n):
     def parse(x):
         if isinstance(x, collections.abc.Iterable) and not isinstance(x, str):
-            return x
+            return tuple(x)
         return tuple(repeat(x, n))
     return parse
-
-
-to_1tuple = _ntuple(1)
 to_2tuple = _ntuple(2)
-to_3tuple = _ntuple(3)
-to_4tuple = _ntuple(4)
-to_ntuple = _ntuple
 
+def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
+    with torch.no_grad():
+        return _trunc_normal_(tensor, mean, std, a, b)
+    
 def _trunc_normal_(tensor, mean, std, a, b):
     def norm_cdf(x):
         # Computes standard normal cumulative distribution function
@@ -68,10 +63,38 @@ def _trunc_normal_(tensor, mean, std, a, b):
     tensor.clamp_(min=a, max=b)
     return tensor
 
+def get_abs_pos(abs_pos, h, w, ori_h, ori_w, has_cls_token=True):
+    """
+    Calculate absolute positional embeddings. If needed, resize embeddings and remove cls_token
+        dimension for the original embeddings.
+    Args:
+        abs_pos (Tensor): absolute positional embeddings with (1, num_position, C).
+        has_cls_token (bool): If true, has 1 embedding in abs_pos for cls token.
+        hw (Tuple): size of input image tokens.
 
-def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
-    with torch.no_grad():
-        return _trunc_normal_(tensor, mean, std, a, b)
+    Returns:
+        Absolute positional embeddings after processing with shape (1, H, W, C)
+    """
+    cls_token = None
+    B, L, C = abs_pos.shape
+    if has_cls_token:
+        cls_token = abs_pos[:, 0:1]
+        abs_pos = abs_pos[:, 1:]
+
+    if ori_h != h or ori_w != w:
+        new_abs_pos = F.interpolate(
+            abs_pos.reshape(1, ori_h, ori_w, -1).permute(0, 3, 1, 2),
+            size=(h, w),
+            mode="bicubic",
+            align_corners=False,
+        ).permute(0, 2, 3, 1).reshape(B, -1, C)
+
+    else:
+        new_abs_pos = abs_pos
+    
+    if cls_token is not None:
+        new_abs_pos = torch.cat([cls_token, new_abs_pos], dim=1)
+    return new_abs_pos
 
 class DropPath(nn.Module):
     """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
@@ -226,6 +249,7 @@ class HybridEmbed(nn.Module):
 
 
 class ViT(nn.Module):
+
     def __init__(self,
                  img_size=224, patch_size=16, in_chans=3, num_classes=80, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
@@ -234,9 +258,8 @@ class ViT(nn.Module):
                  patch_padding='pad', freeze_attn=False, freeze_ffn=False,
                  pretrained=None
                  ):
-        super(ViT, self).__init__()
         # Protect mutable default arguments
-        
+        super(ViT, self).__init__()
         norm_layer = norm_layer or partial(nn.LayerNorm, eps=1e-6)
         self.pretrained_layers = ['*']
         self.num_classes = num_classes
@@ -315,14 +338,9 @@ class ViT(nn.Module):
                     param.requires_grad = False
 
     def init_weights(self, pretrained=None, verbose=False):
-        """Initialize the weights in backbone.
-        Args:
-            pretrained (str, optional): Path to pre-trained weights.
-                Defaults to None.
-        """
         if pretrained is None:
-            print('=> init weights from normal distribution')   
-            def _init_weights(m):
+            print('-----> init weights from normal distribution')
+            for m in self.modules():
                 if isinstance(m, nn.Linear):
                     trunc_normal_(m.weight, std=.02)
                     if isinstance(m, nn.Linear) and m.bias is not None:
@@ -344,23 +362,20 @@ class ViT(nn.Module):
                         if name in ['bias']:
                             nn.init.constant_(m.bias, 0)
 
-            self.apply(_init_weights)
-            return 
-        
-        if os.path.isfile(pretrained):
-            parameters_names = set()
-            for name, m in self.named_parameters():
-                parameters_names.add(name)
-                
-            buffers_names = set()
-            for name, _ in self.named_buffers():
-                buffers_names.add(name)
-                
-            if not (pretrained is None) and not (os.path.isfile(pretrained)):
-                raise FileNotFoundError('pretrained file is specified but can not find the file')
+        parameters_names = set()
+        for name, _ in self.named_parameters():
+            parameters_names.add(name)
 
+        buffers_names = set()
+        for name, _ in self.named_buffers():
+            buffers_names.add(name)
+            
+        if not (pretrained is None) and not (os.path.isfile(pretrained)):
+            raise FileNotFoundError('pretrained file is specified but can not find the file')
+
+        if os.path.isfile(pretrained):
             pretrained_state_dict = torch.load(pretrained)
-            print('=> loading pretrained model {}'.format(pretrained))
+            print('=> loading pretrained backbone from {}'.format(pretrained))
 
             need_init_state_dict = {}
             for _name, m in pretrained_state_dict['state_dict'].items():
@@ -375,7 +390,7 @@ class ViT(nn.Module):
                                 )
                             need_init_state_dict[name] = m
             self.load_state_dict(need_init_state_dict, strict=False)
-            
+
     def get_num_layers(self):
         return len(self.blocks)
 
