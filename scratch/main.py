@@ -17,6 +17,7 @@ parser.add_argument("--resume", action='store_true', default=False, help='resume
 parser.add_argument("--epoch", type=int, default=50, help='total number of epochs')
 parser.add_argument("--rampup", type=int, default=10, help='number of ramp up epoch for learning rate, [consistency loss weight, ema decay rate]')
 parser.add_argument("--batchsize", type=int, default=8, help='batch size')
+parser.add_argument("--startemadecay", default=0.99, help='initial ema decay')
 args = parser.parse_args()
 
 if __name__ == "__main__":
@@ -34,6 +35,8 @@ if __name__ == "__main__":
     cfg.labeled_batch_size = args.batchsize
     cfg.unlabeled_batch_size = args.batchsize
     cfg.test_batch_size = args.batchsize
+    
+    cfg.start_ema_decay = args.startemadecay
         
     for k, v in cfg.items():
         print(f"{k}: {v}")
