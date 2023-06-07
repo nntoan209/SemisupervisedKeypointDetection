@@ -36,7 +36,7 @@ class FullySupervisedTrainer:
         # evaluation metric
         self.evaluator = NME(normalize_item=config.normalize_item)
             
-        # model network
+        # model
         self.model = PoseModel(backbone_type=self.config.backbone_type,
                                backbone_cfg=self.config.backbone_cfg,
                                neck_type=self.config.neck_type,
@@ -100,12 +100,12 @@ class FullySupervisedTrainer:
         result = {'test/supervised loss': round(loss_meter.average(), 5),
                   'test/nme': round(nme_meter.average(), 5),
                   }
-        
+        3
         return result
 
     def _train_joint_epoch(self, epoch):
         print()
-        self.network.train()
+        self.model.train()
         
         pbar = tqdm(enumerate(range(self.len_loader)), total=self.len_loader,
                     desc=f'Training epoch {epoch + 1}/{self.config.joint_epoch}',
@@ -178,7 +178,7 @@ class FullySupervisedTrainer:
         
     def load_checkpoint_from_pt(self, checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
-        self.network.module.load_state_dict(checkpoint['state_dict'])
+        self.model.load_state_dict(checkpoint['state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         self.lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
         self.current_epoch = checkpoint['epoch']
