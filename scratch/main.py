@@ -60,6 +60,6 @@ if __name__ == "__main__":
         trainer.train(args.resume)
     except Exception:
         print(traceback.print_exc())
-        shutil.rmtree(cfg.snapshot_dir)
-    except KeyboardInterrupt:
-        shutil.rmtree(cfg.snapshot_dir)
+        # shutil.rmtree(cfg.snapshot_dir)
+    # except KeyboardInterrupt:
+    #     shutil.rmtree(cfg.snapshot_dir)

@@ -122,7 +122,7 @@ def get_config(new=True):
     C.dataset_keypoint_weights = [1., 1., 1., 1.25, 1.25]
     
     C.consistency_loss = 'mse'
-    C.final_consistency_loss_weight = 3
+    C.final_consistency_loss_weight = 2
     C.consistency_loss_weight_ramp_up_epoch = 5
     
     """ METRICS CONFIG """

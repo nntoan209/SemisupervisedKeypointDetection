@@ -48,7 +48,7 @@ def ema_decay_scheduler(start_ema_decay, end_ema_decay, max_step, step):
         return start_ema_decay + (end_ema_decay - start_ema_decay) / max_step * step
     
 def consistency_loss_weight_scheduler(final_value, max_step, step):
-    if step <= 10:
+    if step <= 20:
         return 0
     elif step > max_step:
         return final_value

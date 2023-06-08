@@ -74,7 +74,7 @@ class EMATrainer:
         self.lr_scheduler = LinearWarmupCosineAnnealingLR(optimizer=self.optimizer,
                                                           warmup_epochs=self.config.warmup_epoch * self.len_loader,
                                                           max_epochs=self.config.joint_epoch * self.len_loader,
-                                                          warmup_start_lr=1e-5,
+                                                          warmup_start_lr=5e-6,
                                                           eta_min=1e-5)
         self.current_epoch = 0
 
