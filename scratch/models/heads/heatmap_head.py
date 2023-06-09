@@ -121,7 +121,7 @@ class HeatmapHead(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, feats):
-        if isinstance(feats, list):
+        if isinstance(feats, list) or isinstance(feats, tuple):
             x = feats[-1]
         else:
             x = feats

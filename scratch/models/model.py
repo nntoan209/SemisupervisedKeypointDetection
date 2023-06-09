@@ -3,13 +3,13 @@ import torch.nn as nn
 from codec.utils import flip_heatmaps
 from metrics.nme import *
 from models.backbones.hrnet import HRNet
-from models.backbones.vit import ViT
+from models.backbones.vit import VisionTransformer
 from models.neck import FeatureMapProcessor
 from models.heads.heatmap_head import HeatmapHead
 from models.heads.vipnas_head import ViPNASHead
 from codec.msra_heatmap import MSRAHeatmap
 
-BACKBONES = {"HRNet": HRNet, "ViT": ViT}
+BACKBONES = {"HRNet": HRNet, "ViT": VisionTransformer}
 NECKS = {"FeatureMapProcessor": FeatureMapProcessor}
 HEADS = {"HeatmapHead": HeatmapHead, "ViPNASHead": ViPNASHead}
 CODECS = {"MSRAHeatmap": MSRAHeatmap}
