@@ -19,16 +19,16 @@ def get_config(new=True, backbone='hrnet'):
     C.unlabeled_train_annotations_path = r'data/custom_aflw/annotations/face_landmarks_custom_aflw_unlabeled_train.json'
     
     if backbone == 'vit':
-        C.backbone_pretrained = "mae_pretrain_vit_base.pth"
+        C.backbone_pretrained = "pretrain_vit_large.pth"
         C.input_size = [192, 256]
         C.heatmap_size = (48, 64)
         # config for ViT backbone
         C.backbone_type = "ViT"
-        C.backbone_cfg ={"arch": 'base',
+        C.backbone_cfg ={"arch": 'large',
                          "img_size": (256, 192),
                          "patch_size": 16,
                          "qkv_bias": True,
-                         "drop_path_rate": 0.3,
+                         "drop_path_rate": 0.5,
                          "with_cls_token": False,
                          "output_cls_token": False,
                          "patch_cfg": dict(padding=2),
@@ -36,7 +36,7 @@ def get_config(new=True, backbone='hrnet'):
         C.neck_type = None
         C.neck_cfg = None
         C.head_type = "HeatmapHead"
-        C.head_cfg = {"in_channels":768,
+        C.head_cfg = {"in_channels":1024,
                       "out_channels":5,
                       "deconv_out_channels":(256, 256),
                       "deconv_kernel_sizes": (4, 4)}

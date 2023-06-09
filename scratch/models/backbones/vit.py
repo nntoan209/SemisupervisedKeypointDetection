@@ -897,15 +897,17 @@ class VisionTransformer(nn.Module):
             print('=> loading pretrained backbone from {}'.format(pretrained))
 
             need_init_state_dict = {}
-            for name, m in pretrained_state_dict['state_dict'].items():
-                if name.split('.')[0] in self.pretrained_layers \
-                or self.pretrained_layers[0] == '*':
-                    if name in parameters_names or name in buffers_names:
-                        if verbose:
-                            print(
-                                '=> init {} from {}'.format(name, pretrained)
-                            )
-                        need_init_state_dict[name] = m
+            for _name, m in pretrained_state_dict['state_dict'].items():
+                if _name.startswith('backbone'):
+                    name = '.'.join(_name.split('.')[1:])
+                    if name.split('.')[0] in self.pretrained_layers \
+                    or self.pretrained_layers[0] == '*':
+                        if name in parameters_names or name in buffers_names:
+                            if verbose:
+                                print(
+                                    '=> init {} from {}'.format(name, pretrained)
+                                )
+                            need_init_state_dict[name] = m
             self.load_state_dict(need_init_state_dict, strict=False)
         
 
