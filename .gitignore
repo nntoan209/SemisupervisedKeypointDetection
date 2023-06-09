@@ -161,6 +161,7 @@ ema_log/
 *.pt
 *.pth
 aflw_code/
+*.pdf
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
