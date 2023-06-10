@@ -27,9 +27,10 @@ if __name__ == "__main__":
         cfg = get_config(new=False, backbone=args.backbone)
     else:
         cfg = get_config(new=True, backbone=args.backbone)
-        
-    if args.usepretrain:
+    
+    if not args.notpretrain:
         cfg.backbone_pretrained = None
+        cfg.backbone_cfg.pretrained = None
         
     cfg.joint_epoch = args.epoch
     

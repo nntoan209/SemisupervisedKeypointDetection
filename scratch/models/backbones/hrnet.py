@@ -492,6 +492,7 @@ class HRNet(nn.Module):
                     for name, _ in m.named_parameters():
                         if name in ['bias']:
                             nn.init.constant_(m.bias, 0)
+            return
 
         parameters_names = set()
         for name, _ in self.named_parameters():
