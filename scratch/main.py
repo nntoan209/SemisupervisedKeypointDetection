@@ -14,7 +14,7 @@ import numpy as np
 parser = ArgumentParser(description='Mean teacher network for AFLW')
 parser.add_argument("--trainer", default='ema', choices=['ema', 'fully_supervised'], help='type of trainer')
 parser.add_argument("--backbone", default='hrnet', choices=['hrnet', 'vit_base', 'vit_large'], help='type of backbone')
-parser.add_argument("--usepretrain", action='store_true', default=True, help='whether to use pretrained for backbone')
+parser.add_argument("--notpretrain", action='store_false', default=True, help='whether to use pretrained for backbone')
 parser.add_argument("--resume", action='store_true', default=False, help='resume training from last checkpoint')
 parser.add_argument("--epoch", type=int, default=50, help='total number of epochs')
 parser.add_argument("--rampup", type=int, default=10, help='number of ramp up epoch for learning rate, [consistency loss weight, ema decay rate]')
