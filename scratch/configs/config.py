@@ -40,6 +40,20 @@ def get_config(new=True, backbone='hrnet'):
                       "out_channels":5,
                       "deconv_out_channels":(256, 256),
                       "deconv_kernel_sizes": (4, 4)}
+        """ OPTIMIZER CONFIG """
+        C.optimizer_cfg = {
+            'type': 'AdamW',
+            'lr': 2e-3,
+            'weight_decay': 0.01,
+            'paramwise_cfg': dict(num_layers=24,
+                                layer_decay_rate=0.8,
+                                custom_keys={
+                                    'bias': dict(decay_multi=0.0),
+                                    'pos_embed': dict(decay_mult=0.0),
+                                    'relative_position_bias_table': dict(decay_mult=0.0),
+                                    'norm': dict(decay_mult=0.0),
+                                })
+        }
         
     elif backbone == 'vit_base':
         C.backbone_pretrained = "pretrain_vit_base.pth"
@@ -63,6 +77,20 @@ def get_config(new=True, backbone='hrnet'):
                       "out_channels":5,
                       "deconv_out_channels":(256, 256),
                       "deconv_kernel_sizes": (4, 4)}
+        """ OPTIMIZER CONFIG """
+        C.optimizer_cfg = {
+            'type': 'AdamW',
+            'lr': 2e-3,
+            'weight_decay': 0.01,
+            'paramwise_cfg': dict(num_layers=12,
+                                layer_decay_rate=0.75,
+                                custom_keys={
+                                    'bias': dict(decay_multi=0.0),
+                                    'pos_embed': dict(decay_mult=0.0),
+                                    'relative_position_bias_table': dict(decay_mult=0.0),
+                                    'norm': dict(decay_mult=0.0),
+                                })
+        }
         
     elif backbone == 'hrnet':
         C.backbone_pretrained = "hrnetv2_w18_aflw_256x256_dark-219606c0_20210125.pth"
@@ -109,6 +137,12 @@ def get_config(new=True, backbone='hrnet'):
                     "conv_kernel_sizes": (1, ),
                     "deconv_out_channels": None
                     }
+        """ OPTIMIZER CONFIG """
+        C.optimizer_cfg = {
+            'type': 'AdamW',
+            'lr': 2e-3,
+            'weight_decay': 1e-5
+        }
     
     C.snapshot_dir = r'./ema_log'
         
@@ -152,20 +186,17 @@ def get_config(new=True, backbone='hrnet'):
     """ METRICS CONFIG """
     C.normalize_item = 'bbox_size'
     
-    """ OPTIMIZER CONFIG """
-    C.lr = 2e-3
-    C.weight_decay = 1e-4
-    
-    C.start_ema_decay = 0.98
-    C.end_ema_decay = 0.999
-    C.ema_ramp_up_epoch = 5
-    
     """ TRAIN CONFIG """
     C.joint_epoch = 50
     C.labeled_epoch = 0
     
     C.warmup_epoch = 5
+    C.start_factor = 0.01
     C.seed = 420
+    
+    C.start_ema_decay = 0.98
+    C.end_ema_decay = 0.999
+    C.ema_ramp_up_epoch = 5
     
     # if new:
     #     log_config(C)
