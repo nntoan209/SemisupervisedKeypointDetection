@@ -56,7 +56,7 @@ class FullySupervisedTrainer:
                                                           warmup_epochs=self.config.warmup_epoch * self.len_loader,
                                                           max_epochs=self.config.joint_epoch * self.len_loader,
                                                           warmup_start_lr_factor=self.config.start_factor,
-                                                          eta_min=1e-6)
+                                                          eta_min=0)
         self.current_epoch = 0
 
     def _eval_epoch(self, epoch):
@@ -142,7 +142,7 @@ class FullySupervisedTrainer:
             
             # back propagation
             loss_total.backward()
-            clip_grad_norm_(self.model.parameters(), 4)
+            clip_grad_norm_(self.model.parameters(), self.config.clip)
 
             self.optimizer.step()
             

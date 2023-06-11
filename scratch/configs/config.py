@@ -43,8 +43,8 @@ def get_config(new=True, backbone='hrnet'):
         """ OPTIMIZER CONFIG """
         C.optimizer_cfg = {
             'type': 'AdamW',
-            'lr': 2e-3,
-            'weight_decay': 0.01,
+            'lr': 1e-3,
+            'weight_decay': 0.1,
             'paramwise_cfg': dict(num_layers=24,
                                 layer_decay_rate=0.8,
                                 custom_keys={
@@ -54,6 +54,8 @@ def get_config(new=True, backbone='hrnet'):
                                     'norm': dict(decay_mult=0.0),
                                 })
         }
+        
+        C.clip = 2.
         
     elif backbone == 'vit_base':
         C.backbone_pretrained = "pretrain_vit_base.pth"
@@ -80,8 +82,8 @@ def get_config(new=True, backbone='hrnet'):
         """ OPTIMIZER CONFIG """
         C.optimizer_cfg = {
             'type': 'AdamW',
-            'lr': 2e-3,
-            'weight_decay': 0.01,
+            'lr': 1e-3,
+            'weight_decay': 0.1,
             'paramwise_cfg': dict(num_layers=12,
                                 layer_decay_rate=0.75,
                                 custom_keys={
@@ -91,6 +93,8 @@ def get_config(new=True, backbone='hrnet'):
                                     'norm': dict(decay_mult=0.0),
                                 })
         }
+        
+        C.clip = 2.
         
     elif backbone == 'hrnet':
         C.backbone_pretrained = "hrnetv2_w18_aflw_256x256_dark-219606c0_20210125.pth"
@@ -139,10 +143,11 @@ def get_config(new=True, backbone='hrnet'):
                     }
         """ OPTIMIZER CONFIG """
         C.optimizer_cfg = {
-            'type': 'AdamW',
+            'type': 'Adam',
             'lr': 2e-3,
-            'weight_decay': 1e-5
         }
+        
+        C.clip = 4.
     
     C.snapshot_dir = r'./ema_log'
         

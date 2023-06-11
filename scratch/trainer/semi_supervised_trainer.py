@@ -271,7 +271,7 @@ class EMATrainer:
             
             # back propagation
             loss_total.backward()
-            clip_grad_norm_(self.network.module.student_model.parameters(), 4)
+            clip_grad_norm_(self.network.module.student_model.parameters(), self.config.clip)
 
             self.optimizer.step()
             
