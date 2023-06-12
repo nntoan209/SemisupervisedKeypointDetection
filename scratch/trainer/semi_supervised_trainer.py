@@ -69,7 +69,7 @@ class EMATrainer:
         
         # optimizer
         self.optimizer = build_optimizer(optimizer_cfg=self.config.optimizer_cfg,
-                                         model=self.model)
+                                         model=self.network.module.student_model)
         
         self.lr_scheduler = LinearWarmupCosineAnnealingLR(optimizer=self.optimizer,
                                                           warmup_epochs=self.config.warmup_epoch * self.len_loader,
