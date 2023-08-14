@@ -243,7 +243,7 @@ class GenerateTarget():
                                                       item['keypoints_visible'])
         if self.background:
             # Add background to the target heatmap
-            background = np.max(heatmap, axis=0, keepdims=True)
+            background = 1- np.max(heatmap, axis=0, keepdims=True)
             heatmap = np.concatenate((heatmap, background), axis=0)
             
             keypoint_weights = np.concatenate((keypoint_weights, np.array([[1]])), axis=-1)
