@@ -55,7 +55,7 @@ class PoseModel(nn.Module):
     
     def predict(self, items, cuda=True):
         """
-        Predict the keypoints by combining the 2 versions of heatmap: the curernt version
+        Predict the keypoints on original image by combining the 2 versions of heatmap: the curernt version
         and the flipped version to improve the accuracy
         """
         self.eval()
@@ -63,14 +63,14 @@ class PoseModel(nn.Module):
             if self.test_cfg.get('flip_test', False):
                 _feats = self._extract_features(items['img'].to(torch.device("cuda:0")) if cuda else items['img'])
                 _feats_flip = self._extract_features(items['img'].flip(-1).to(torch.device("cuda:0")) if cuda else items['img'].flip(-1))
-                _batch_heatmaps = self.head(_feats)
-                _batch_heatmaps_flip = flip_heatmaps(self.head(_feats_flip),
+                _batch_heatmaps = self.head(_feats)[:, :5, :, :]
+                _batch_heatmaps_flip = flip_heatmaps(self.head(_feats_flip)[:, :5, :, :],
                                                     flip_indices=[1, 0, 2, 3, 4],
                                                     shift_heatmap=self.test_cfg.get('shift_heatmap', False))
                 batch_heatmaps = (_batch_heatmaps + _batch_heatmaps_flip) * 0.5
             else:
                 _feats = self._extract_features(items['img'].to(torch.device("cuda:0")) if cuda else items['img'])
-                batch_heatmaps = self.head(_feats)
+                batch_heatmaps = self.head(_feats)[:, :5, :, :]
 
         batch_keypoints = []
         batch_scores = []
@@ -89,3 +89,33 @@ class PoseModel(nn.Module):
                     
         return (np.stack(batch_keypoints, axis=0), np.stack(batch_scores, axis=0))
     
+    def predict_on_input_image(self, items, cuda=True):
+        """
+        Predict the keypoints on input image by combining the 2 versions of heatmap: the curernt version
+        and the flipped version to improve the accuracy
+        """
+        self.eval()
+        with torch.no_grad():
+            if self.test_cfg.get('flip_test', False):
+                _feats = self._extract_features(items['img'].to(torch.device("cuda:0")) if cuda else items['img'])
+                _feats_flip = self._extract_features(items['img'].flip(-1).to(torch.device("cuda:0")) if cuda else items['img'].flip(-1))
+                _batch_heatmaps = self.head(_feats)[:, :5, :, :]
+                _batch_heatmaps_flip = flip_heatmaps(self.head(_feats_flip)[:, :5, :, :],
+                                                    flip_indices=[1, 0, 2, 3, 4],
+                                                    shift_heatmap=self.test_cfg.get('shift_heatmap', False))
+                batch_heatmaps = (_batch_heatmaps + _batch_heatmaps_flip) * 0.5
+            else:
+                _feats = self._extract_features(items['img'].to(torch.device("cuda:0")) if cuda else items['img'])
+                batch_heatmaps = self.head(_feats)[:, :5, :, :]
+
+        batch_keypoints = []
+        batch_scores = []
+        for _, heatmap in enumerate(batch_heatmaps):
+            heatmap_np = heatmap.detach().cpu().numpy()
+            keypoints, scores = self.codec.decode(heatmap_np)
+            
+            batch_keypoints.append(keypoints)
+            batch_scores.append(scores)     
+                    
+        return (np.stack(batch_keypoints, axis=0), np.stack(batch_scores, axis=0))
+ 

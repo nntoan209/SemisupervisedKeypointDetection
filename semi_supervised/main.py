@@ -20,6 +20,7 @@ parser.add_argument("--epoch", type=int, default=50, help='total number of epoch
 parser.add_argument("--rampup", type=int, default=10, help='number of ramp up epoch for learning rate, [consistency loss weight, ema decay rate]')
 parser.add_argument("--batchsize", type=int, default=8, help='batch size')
 parser.add_argument("--startemadecay", type=float, default=0.99, help='initial ema decay')
+parser.add_argument("--startlr", type=float, default=2e-3, help='start learning rate for the top layer')
 args = parser.parse_args()
 
 if __name__ == "__main__":
@@ -28,9 +29,9 @@ if __name__ == "__main__":
     else:
         cfg = get_config(new=True, backbone=args.backbone)
     
-    if not args.notpretrain:
-        cfg.backbone_pretrained = None
-        cfg.backbone_cfg.pretrained = None
+    # if not args.notpretrain:
+    #     cfg.backbone_pretrained = None
+    #     cfg.backbone_cfg.pretrained = None
         
     cfg.joint_epoch = args.epoch
     
@@ -42,7 +43,10 @@ if __name__ == "__main__":
     cfg.unlabeled_batch_size = args.batchsize
     cfg.test_batch_size = args.batchsize
     
+    cfg.optimizer_cfg.lr = args.startlr
     cfg.start_ema_decay = args.startemadecay
+    
+    cfg.name = args.trainer + "_" + cfg.backbone + "_" + cfg.supervised_loss + "_" + cfg.normalize_item
     
     log_config(cfg)
         

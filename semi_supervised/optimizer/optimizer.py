@@ -21,7 +21,7 @@ def get_num_layer_for_vit(var_name, num_max_layer):
 def build_optimizer(optimizer_cfg: dict, model: nn.Module):
     if hasattr(model, 'module'):
         model = model.module
-            
+        
     type = optimizer_cfg['type'].lower()
     optimizer_cfg.pop('type')
     

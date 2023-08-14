@@ -158,7 +158,7 @@ class AdaptiveWingLoss(nn.Module):
         losses = torch.where(
             delta < self.theta,
             self.omega *
-            torch.log(1 +
+            torch.log(1 + 1e-12 +
                       torch.pow(delta / self.epsilon, self.alpha - target)),
             A * delta - C)
 

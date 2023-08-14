@@ -910,7 +910,6 @@ class VisionTransformer(nn.Module):
                             need_init_state_dict[name] = m
             self.load_state_dict(need_init_state_dict, strict=False)
         
-
     def _prepare_pos_embed(self, state_dict, prefix, *args, **kwargs):
         name = prefix + 'pos_embed'
         if name not in state_dict.keys():

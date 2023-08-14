@@ -3,6 +3,7 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 from torch.nn import DataParallel
 from tqdm import tqdm
+import wandb
 
 from dataloader.aflw import get_test_loader, get_train_loader
 from losses.loss import AdaptiveWingLoss, KeypointMSELoss
@@ -21,14 +22,14 @@ class EMATrainer:
         self.device = torch.device(self.config.device)
         
         # dataloader
-        self.labeled_train_loader_1 = get_train_loader(batch_size=self.config.labeled_batch_size, type='labeled')
-        self.labeled_train_loader_2 = get_train_loader(batch_size=self.config.labeled_batch_size, type='labeled')
+        self.labeled_train_loader_1 = get_train_loader(config=self.config, type='labeled')
+        self.labeled_train_loader_2 = get_train_loader(config=self.config, type='labeled')
         
-        self.unlabeled_train_loader_1 = get_train_loader(batch_size=self.config.unlabeled_batch_size, type='unlabeled')
-        self.unlabeled_train_loader_2 = get_train_loader(batch_size=self.config.unlabeled_batch_size, type='unlabeled')
+        self.unlabeled_train_loader_1 = get_train_loader(config=self.config, type='unlabeled')
+        self.unlabeled_train_loader_2 = get_train_loader(config=self.config, type='unlabeled')
         
         self.len_loader = max(len(self.labeled_train_loader_1), len(self.unlabeled_train_loader_1))
-        self.test_loader = get_test_loader(batch_size=self.config.test_batch_size)
+        self.test_loader = get_test_loader(config=self.config)
         
         # loss functions
         if self.config.supervised_loss == 'awing':
@@ -77,6 +78,9 @@ class EMATrainer:
                                                           warmup_start_lr_factor=self.config.start_factor,
                                                           eta_min=1e-6)
         self.current_epoch = 0
+        self.best_nme_teacher = 1e9
+        wandb.init(project='EMA AFLW-neck', entity='nntoan209', resume=False, config=config,
+                   name=self.config.name)
 
     def _eval_epoch(self, epoch):
         self.network.eval()
@@ -113,8 +117,8 @@ class EMATrainer:
                                           weight=num_item)
                 
                 # nme for model
-                nme_student = self.evaluator(s_keypoints_pred, batch)
-                nme_teacher = self.evaluator(t_keypoints_pred, batch)
+                nme_student = self.evaluator(s_keypoints_pred, batch, syn=False)
+                nme_teacher = self.evaluator(t_keypoints_pred, batch, syn=False)
                 
                 nme_meter_student.update(val=nme_student.item(),
                                          weight=num_item)
@@ -133,7 +137,67 @@ class EMATrainer:
                   'test/supervised loss teacher': round(loss_meter_teacher.average(), 5),
                   'test/nme teacher': round(nme_meter_teacher.average(), 5),
                   }
-        
+        for k, v in result.items():
+            wandb.log({k: v})
+        return result
+    
+    def _eval_syn_epoch(self, epoch):
+        self.network.eval()
+        pbar = tqdm(self.test_loader, total=len(self.test_loader),
+                    desc=f'Eval epoch {epoch+1}',
+                    ncols=0)
+        loss_meter_student = AverageMeter()
+        loss_meter_teacher = AverageMeter()
+
+        nme_meter_student = AverageMeter()
+        nme_meter_teacher = AverageMeter()
+
+        for batch in pbar:
+            
+            batch_image = batch['img'].to(self.device)
+            batch_heatmap = batch['heatmap'].to(self.device)
+            batch_target_weights = batch['keypoints_weight'].to(self.device)
+            
+            num_item = batch_image.shape[0]
+            
+            with torch.no_grad():
+                t_heatmap_pred, s_heatmap_pred = self.network(batch_image)
+                t_keypoints_pred, _, s_keypoints_pred, _ = self.network.module.predict_on_input_image(items=batch, cuda=True)
+
+                # loss for model
+                loss_student = self.supervised_criterion(s_heatmap_pred, batch_heatmap,
+                                                         batch_target_weights)
+                loss_teacher = self.supervised_criterion(t_heatmap_pred, batch_heatmap,
+                                                         batch_target_weights)
+                
+                loss_meter_student.update(val=loss_student.item(),
+                                          weight=num_item)
+                loss_meter_teacher.update(val=loss_teacher.item(),
+                                          weight=num_item)
+                
+                # nme for model
+                nme_student = self.evaluator(s_keypoints_pred, batch, syn=True)
+                nme_teacher = self.evaluator(t_keypoints_pred, batch, syn=True)
+                
+                nme_meter_student.update(val=nme_student.item(),
+                                         weight=num_item)
+                nme_meter_teacher.update(val=nme_teacher.item(),
+                                         weight=num_item)
+
+                pbar.set_postfix({
+                    'supervised loss student/teacher': [round(loss_meter_student.average(), 5),
+                                                        round(loss_meter_teacher.average(), 5)],
+                    'nme student/teacher': [round(nme_meter_student.average(), 5),
+                                            round(nme_meter_teacher.average(), 5)],
+                })
+                
+        result = {'test/supervised loss student': round(loss_meter_student.average(), 5),
+                  'test/nme student': round(nme_meter_student.average(), 5),
+                  'test/supervised loss teacher': round(loss_meter_teacher.average(), 5),
+                  'test/nme teacher': round(nme_meter_teacher.average(), 5),
+                  }
+        for k, v in result.items():
+            wandb.log({k: v})
         return result
 
     def _train_joint_epoch(self, epoch):
@@ -193,7 +257,7 @@ class EMATrainer:
                 # flip the heatmap
                 if unlabeled_batch_1['flip'][idx]:
                     heatmap = flip_heatmaps(heatmaps=torch.unsqueeze(heatmap, 0),
-                                            flip_indices=self.config.flip_indices,
+                                            flip_indices=[1, 0, 2, 3, 4, 5],
                                             shift_heatmap=True).squeeze()
                 recovered_unlabeled_batch_heatmap_pred_1[idx] = heatmap
                 
@@ -208,7 +272,7 @@ class EMATrainer:
                 # flip the heatmap
                 if unlabeled_batch_2['flip'][idx]:
                     heatmap = flip_heatmaps(heatmaps=torch.unsqueeze(heatmap, 0),
-                                            flip_indices=self.config.flip_indices,
+                                            flip_indices=[1, 0, 2, 3, 4, 5],
                                             shift_heatmap=True).squeeze()
                 recovered_unlabeled_batch_heatmap_pred_2[idx] = heatmap
                 
@@ -233,7 +297,7 @@ class EMATrainer:
                 # flip the heatmap
                 if labeled_batch_1['flip'][idx]:
                     heatmap = flip_heatmaps(heatmaps=torch.unsqueeze(heatmap, 0),
-                                            flip_indices=self.config.flip_indices,
+                                            flip_indices=[1, 0, 2, 3, 4, 5],
                                             shift_heatmap=True).squeeze()
                 recovered_labeled_batch_heatmap_pred_1[idx] = heatmap
                 
@@ -247,7 +311,7 @@ class EMATrainer:
                 # flip the heatmap
                 if labeled_batch_2['flip'][idx]:
                     heatmap = flip_heatmaps(heatmaps=torch.unsqueeze(heatmap, 0),
-                                            flip_indices=self.config.flip_indices,
+                                            flip_indices=[1, 0, 2, 3, 4, 5],
                                             shift_heatmap=True).squeeze()
                 recovered_labeled_batch_heatmap_pred_2[idx] = heatmap
             
@@ -284,6 +348,7 @@ class EMATrainer:
             self.network.module._update_teacher_ema(ema_decay)  
             
             # update the learning rate
+            wandb.log({'top_lr': self.lr_scheduler.get_last_lr()[-1]})
             self.lr_scheduler.step()
 
             pbar.set_postfix({
@@ -293,6 +358,13 @@ class EMATrainer:
                 'top lr': self.lr_scheduler.get_last_lr()[-1],
                 'bottom lr': self.lr_scheduler.get_last_lr()[0]
             })
+            
+        result = {'train/supervised loss': round(supervised_loss_meter.average(), 5),
+                  'train/label consistency loss': round(labeled_consistency_loss_meter.average(), 5),
+                  'train/unlabel consistency loss': round(unlabeled_consistency_loss_meter.average(), 5)
+                  }
+        for k, v in result.items():
+            wandb.log({k: v})
 
     def save_checkpoint(self, epoch, dir='checkpoint_last.pt', type='latest'):
         checkpoint_path = os.path.join(self.config.snapshot_dir, dir)
@@ -300,6 +372,7 @@ class EMATrainer:
                       'optimizer': self.optimizer.state_dict(),
                       'lr_scheduler': self.lr_scheduler.state_dict(),
                       'epoch': self.current_epoch,
+                      'best_nme_teacher': self.best_nme_teacher
                       }
         torch.save(checkpoint, checkpoint_path)
         print(f"-----> save {type} checkpoint at epoch {epoch+1}")
@@ -311,6 +384,7 @@ class EMATrainer:
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         self.lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
         self.current_epoch = checkpoint['epoch']
+        self.best_nme_teacher = checkpoint['best_nme_teacher']
         print("----> load checkpoint")
         
     def load_checkpoint_from_pt(self, checkpoint_path):
@@ -319,21 +393,20 @@ class EMATrainer:
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         self.lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
         self.current_epoch = checkpoint['epoch']
+        self.best_nme_teacher = checkpoint['best_nme_teacher']
         print("----> load checkpoint")
 
     def train(self, resume=False):        
         if resume:
             self.load_checkpoint()
-            
-        best_nme_teacher = 1e9
-            
+                        
         for epoch in range(self.current_epoch, self.config.labeled_epoch + self.config.joint_epoch):  
             self._train_joint_epoch(epoch)
                 
-            result = self._eval_epoch(epoch)
+            result = self._eval_syn_epoch(epoch)
             nme_teacher = result['test/nme teacher']
-            if nme_teacher <= best_nme_teacher:
-                best_nme_teacher = nme_teacher
+            if nme_teacher <= self.best_nme_teacher:
+                self.best_nme_teacher = nme_teacher
                 self.save_checkpoint(epoch=epoch, dir='checkpoint_best.pt', type='best')
                 
             self.save_checkpoint(epoch=epoch, dir='checkpoint_last.pt', type='latest')

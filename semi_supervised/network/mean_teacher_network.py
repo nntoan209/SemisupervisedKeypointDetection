@@ -37,6 +37,16 @@ class MeanTeacherNetwork(nn.Module):
             s_keypoints_pred, s_keypoints_pred_score = self.student_model.predict(items, cuda)
             
         return t_keypoints_pred, t_keypoints_pred_score, s_keypoints_pred, s_keypoints_pred_score
+    
+    def predict_on_input_image(self, items, cuda=True):
+        with torch.no_grad():
+            # predicted keypoints of the teacher model
+            t_keypoints_pred, t_keypoints_pred_score = self.teacher_model.predict_on_input_image(items, cuda)
+            
+            # predicted keypoints of the student model
+            s_keypoints_pred, s_keypoints_pred_score = self.student_model.predict_on_input_image(items, cuda)
+            
+        return t_keypoints_pred, t_keypoints_pred_score, s_keypoints_pred, s_keypoints_pred_score
 
     def _update_teacher_ema(self, ema_decay):
         for t_param, s_param in zip(self.teacher_model.parameters(), self.student_model.parameters()):

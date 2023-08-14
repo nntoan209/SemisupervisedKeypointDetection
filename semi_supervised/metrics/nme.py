@@ -26,7 +26,7 @@ class NME:
             input_size_1 = items['input_size'][1][0]
             return torch.sqrt(input_size_0 * input_size_1)
         
-    def __call__(self, batch_keypoints: np.ndarray, items: dict):
+    def __call__(self, batch_keypoints: np.ndarray, items: dict, syn: bool = False):
         """
         Arguments:
             batch_keypoints: shape [B, 1, K, D]
@@ -41,9 +41,16 @@ class NME:
         gt_batch_keypoints = items['keypoints'].detach().cpu().numpy()
         normalize_factor = self._get_normalize_factor(items=items,
                                                       normalize_item=self.normalize_item)
+        if syn:
+            # convert the keypoint coordinates to (128, 128) image
+            ratio = np.array((128, 128)) / np.array((items['input_size'][0][0].item(), items['input_size'][1][0].item()))
+            batch_keypoints = batch_keypoints * ratio
+            gt_batch_keypoints = items['transformed_keypoints'].detach().cpu().numpy() * ratio
+            normalize_factor = torch.Tensor([128])
+            
         displacement = batch_keypoints - gt_batch_keypoints
         distances = np.linalg.norm(displacement, axis=-1).reshape(batch_size, num_keypoints)
-        results = np.sum(distances, axis=1) / normalize_factor
+        results = np.mean(distances, axis=1) / normalize_factor
         
         return torch.mean(results)
     

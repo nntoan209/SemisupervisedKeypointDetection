@@ -1,6 +1,5 @@
 import math
 import warnings
-import torch
 from torch.utils.data import DataLoader
 
 class AverageMeter(object):

@@ -4,7 +4,7 @@ import numpy as np
 from scipy.stats import truncnorm
 from torchvision.transforms import ColorJitter
 from configs.config import get_config
-config = get_config()
+config = get_config('hrnet')
 
 
 class LoadImage():
@@ -233,13 +233,20 @@ class TopDownAffine():
 
 class GenerateTarget():
     def __init__(self,
-                 codec):
+                 codec,
+                 background=True):
         self.codec = codec
+        self.background = background
         
     def __call__(self, item: dict):
         heatmap, keypoint_weights = self.codec.encode(item['transformed_keypoints'],
                                                       item['keypoints_visible'])
-        
+        if self.background:
+            # Add background to the target heatmap
+            background = np.max(heatmap, axis=0, keepdims=True)
+            heatmap = np.concatenate((heatmap, background), axis=0)
+            
+            keypoint_weights = np.concatenate((keypoint_weights, np.array([[1]])), axis=-1)
         keypoint_weights *= np.array(config.dataset_keypoint_weights, dtype=np.float32)
         item['heatmap'] = heatmap
         item['keypoint_weights'] = keypoint_weights

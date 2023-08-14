@@ -8,7 +8,7 @@ def log_config(cfg):
     with open(os.path.join(cfg.snapshot_dir, 'config.json'), 'w') as f:
         json.dump(cfg, f, indent=4)
 
-def get_config(new=True, backbone='hrnet'):
+def get_config(backbone, new=True):
     C = edict()
     config = C
 
@@ -18,6 +18,8 @@ def get_config(new=True, backbone='hrnet'):
     C.labeled_train_annotations_path = r'data/custom_aflw/annotations/face_landmarks_custom_aflw_labeled_train.json'
     C.unlabeled_train_annotations_path = r'data/custom_aflw/annotations/face_landmarks_custom_aflw_unlabeled_train.json'
     
+    C.backbone = backbone
+
     if backbone == 'vit_large':
         C.backbone_pretrained = "pretrain_vit_large.pth"
         C.input_size = [192, 256]
@@ -37,14 +39,14 @@ def get_config(new=True, backbone='hrnet'):
         C.neck_cfg = None
         C.head_type = "HeatmapHead"
         C.head_cfg = {"in_channels":1024,
-                      "out_channels":5,
+                      "out_channels":6,
                       "deconv_out_channels":(256, 256),
                       "deconv_kernel_sizes": (4, 4)}
         """ OPTIMIZER CONFIG """
         C.optimizer_cfg = {
             'type': 'AdamW',
-            'lr': 1e-3,
-            'weight_decay': 0.1,
+            'lr': 5e-4,
+            'weight_decay': 0.05,
             'paramwise_cfg': dict(num_layers=24,
                                 layer_decay_rate=0.8,
                                 custom_keys={
@@ -76,7 +78,7 @@ def get_config(new=True, backbone='hrnet'):
         C.neck_cfg = None
         C.head_type = "HeatmapHead"
         C.head_cfg = {"in_channels":768,
-                      "out_channels":5,
+                      "out_channels":6,
                       "deconv_out_channels":(256, 256),
                       "deconv_kernel_sizes": (4, 4)}
         """ OPTIMIZER CONFIG """
@@ -136,7 +138,7 @@ def get_config(new=True, backbone='hrnet'):
         C.neck_cfg = dict()
         C.head_type = "HeatmapHead"
         C.head_cfg = {"in_channels":270,
-                    "out_channels":5,
+                    "out_channels":6,
                     "conv_out_channels": (270, ),
                     "conv_kernel_sizes": (1, ),
                     "deconv_out_channels": None
@@ -153,9 +155,9 @@ def get_config(new=True, backbone='hrnet'):
         
     """ DATA CONFIG """
     
-    C.labeled_batch_size = 2
-    C.unlabeled_batch_size = 2
-    C.test_batch_size = 2
+    C.labeled_batch_size = 1
+    C.unlabeled_batch_size = 1
+    C.test_batch_size = 1
     C.num_workers = 2
     
     C.flip_prob = 0.5
@@ -182,7 +184,7 @@ def get_config(new=True, backbone='hrnet'):
     C.theta = 0.5
     
     C.use_target_weight = True
-    C.dataset_keypoint_weights = [1., 1., 1., 1.25, 1.25]
+    C.dataset_keypoint_weights = [1., 1., 1., 1.25, 1.25, 0.75]
     
     C.consistency_loss = 'mse'
     C.final_consistency_loss_weight = 3

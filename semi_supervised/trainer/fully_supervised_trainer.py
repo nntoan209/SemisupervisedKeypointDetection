@@ -3,6 +3,7 @@ import torch
 from torch.nn.utils import clip_grad_norm_
 from torch.nn import DataParallel
 from tqdm import tqdm
+import wandb
 
 from dataloader.aflw import get_test_loader, get_train_loader
 from losses.loss import AdaptiveWingLoss, KeypointMSELoss
@@ -19,9 +20,9 @@ class FullySupervisedTrainer:
         self.device = torch.device(self.config.device)
         
         # dataloader
-        self.train_loader = get_train_loader(batch_size=self.config.labeled_batch_size, type='labeled', drop_last=False)
+        self.train_loader = get_train_loader(config=self.config, type='labeled', drop_last=False)
         self.len_loader = len(self.train_loader)
-        self.test_loader = get_test_loader(batch_size=self.config.test_batch_size)
+        self.test_loader = get_test_loader(config=self.config)
         
         # loss functions
         if self.config.supervised_loss == 'awing':
@@ -58,6 +59,9 @@ class FullySupervisedTrainer:
                                                           warmup_start_lr_factor=self.config.start_factor,
                                                           eta_min=0)
         self.current_epoch = 0
+        self.best_nme = 1e9
+        wandb.init(project='EMA AFLW-neck', entity='nntoan209', resume=False, config=config,
+                   name=self.config.name)
 
     def _eval_epoch(self, epoch):
         self.model.eval()
@@ -100,7 +104,54 @@ class FullySupervisedTrainer:
         result = {'test/supervised loss': round(loss_meter.average(), 5),
                   'test/nme': round(nme_meter.average(), 5),
                   }
-        3
+        for k, v in result.items():
+            wandb.log({k: v})
+        return result
+    
+    def _eval_syn_epoch(self, epoch):
+        self.model.eval()
+        pbar = tqdm(self.test_loader, total=len(self.test_loader),
+                    desc=f'Eval epoch {epoch+1}',
+                    ncols=0)
+        loss_meter = AverageMeter()
+
+        nme_meter = AverageMeter()
+
+        for batch in pbar:
+            
+            batch_image = batch['img'].to(self.device)
+            batch_heatmap = batch['heatmap'].to(self.device)
+            batch_target_weights = batch['keypoints_weight'].to(self.device)
+            
+            num_item = batch_image.shape[0]
+            
+            with torch.no_grad():
+                heatmap_pred = self.model(batch_image)
+                keypoints_pred, _ = self.model.module.predict_on_input_image(items=batch, cuda=True)
+
+                # loss for model
+                loss = self.supervised_criterion(heatmap_pred, batch_heatmap,
+                                                         batch_target_weights)
+                
+                loss_meter.update(val=loss.item(),
+                                  weight=num_item)
+                
+                # nme for model
+                nme = self.evaluator(keypoints_pred, batch, syn=True)
+                
+                nme_meter.update(val=nme.item(),
+                                 weight=num_item)
+
+                pbar.set_postfix({
+                    'supervised loss student/teacher': [round(loss_meter.average(), 5)],
+                    'nme student/teacher': [round(nme_meter.average(), 5)]
+                })
+                
+        result = {'test/supervised loss': round(loss_meter.average(), 5),
+                  'test/nme': round(nme_meter.average(), 5),
+                  }
+        for k, v in result.items():
+            wandb.log({k: v})
         return result
 
     def _train_joint_epoch(self, epoch):
@@ -147,6 +198,7 @@ class FullySupervisedTrainer:
             self.optimizer.step()
             
             # update the learning rate
+            wandb.log({'top_lr': self.lr_scheduler.get_last_lr()[-1]})
             self.lr_scheduler.step()
 
             pbar.set_postfix({
@@ -154,6 +206,11 @@ class FullySupervisedTrainer:
                 'top lr': self.lr_scheduler.get_last_lr()[-1],
                 'bottom lr': self.lr_scheduler.get_last_lr()[0]
             })
+            
+        result = {'train/supervised loss': round(supervised_loss_meter.average(), 5),
+                  }
+        for k, v in result.items():
+            wandb.log({k: v})
 
     def save_checkpoint(self, epoch, dir='checkpoint_last.pt', type='latest'):
         checkpoint_path = os.path.join(self.config.snapshot_dir, dir)
@@ -161,6 +218,7 @@ class FullySupervisedTrainer:
                       'optimizer': self.optimizer.state_dict(),
                       'lr_scheduler': self.lr_scheduler.state_dict(),
                       'epoch': self.current_epoch,
+                      'best_nme': self.best_nme
                       }
         torch.save(checkpoint, checkpoint_path)
         print(f"-----> save {type} checkpoint at epoch {epoch+1}")
@@ -172,6 +230,7 @@ class FullySupervisedTrainer:
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         self.lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
         self.current_epoch = checkpoint['epoch']
+        self.best_nme = checkpoint['best_nme']
         print("----> load checkpoint")
         
     def load_checkpoint_from_pt(self, checkpoint_path):
@@ -180,21 +239,20 @@ class FullySupervisedTrainer:
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         self.lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
         self.current_epoch = checkpoint['epoch']
+        self.best_nme = checkpoint['best_nme']
         print("----> load checkpoint")
 
     def train(self, resume=False):        
         if resume:
             self.load_checkpoint()
-            
-        best_nme = 1e9
-            
+                    
         for epoch in range(self.current_epoch, self.config.labeled_epoch + self.config.joint_epoch):  
             self._train_joint_epoch(epoch)
                 
-            result = self._eval_epoch(epoch)
+            result = self._eval_syn_epoch(epoch)
             current_nme = result['test/nme']
-            if current_nme <= best_nme:
-                best_nme = current_nme
+            if current_nme <= self.best_nme:
+                self.best_nme = current_nme
                 self.save_checkpoint(epoch=epoch, dir='checkpoint_best.pt', type='best')
                 
             self.save_checkpoint(epoch=epoch, dir='checkpoint_last.pt', type='latest')
